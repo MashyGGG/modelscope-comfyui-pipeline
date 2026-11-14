@@ -145,7 +145,7 @@ else:
         for name, url in {
             "GitHub source": "https://raw.githubusercontent.com/Comfy-Org/ComfyUI/v0.3.60/README.md",
             "ModelScope Hub": "https://modelscope.cn/api/v1/models/AI-ModelScope/stable-diffusion-xl-base-1.0/repo/files?Revision=master",
-            "PyPI metadata": "https://pypi.org/pypi/requests/2.32.5/json",
+            "Ordinary PyPI index": c.get("pypi_index_url", "https://mirrors.aliyun.com/pypi/simple").rstrip("/") + "/pip/",
             "PyTorch cu126 index": "https://download.pytorch.org/whl/cu126/torch/",
         }.items():
             def probe(url=url):

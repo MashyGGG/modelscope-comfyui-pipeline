@@ -68,6 +68,22 @@ def configure_git(c):
     print(f"[PASS] Git HTTP transport: {protocol}; scope=local; repository={p['comfy']}", flush=True)
 
 
+def install_packages(c):
+    p = paths(c)
+    index = c.get("pypi_index_url", "https://mirrors.aliyun.com/pypi/simple")
+    network = ["--timeout", str(c.get("pip_timeout", 30)), "--retries", str(c.get("pip_retries", 3))]
+    print(f"[INFO] Ordinary package index: {index}; constraints={ROOT / 'constraints.txt'}", flush=True)
+    run([p["python"], "-m", "pip", "install", "pip==25.2", "--index-url", index, *network])
+    print("[START] Install only the three official cu126 wheels; dependency resolution follows using the ordinary index", flush=True)
+    run([p["python"], "-m", "pip", "install", "--no-deps", "-c", ROOT / "constraints.txt",
+         "torch==2.8.0+cu126", "torchvision==0.23.0+cu126", "torchaudio==2.8.0+cu126",
+         "--index-url", "https://download.pytorch.org/whl/cu126", *network])
+    print("[START] Resolve all dependencies with pinned versions from the ordinary package index", flush=True)
+    run([p["python"], "-m", "pip", "install", "-c", ROOT / "constraints.txt", "-r", ROOT / "requirements.txt",
+         "-r", p["comfy"] / "requirements.txt", "--index-url", index, *network])
+    run([p["python"], "-m", "pip", "check"])
+
+
 def install(c, require_cuda=True):
     p = paths(c)
     marker = p["install_marker"]
@@ -108,12 +124,7 @@ def install(c, require_cuda=True):
     if not p["venv"].exists():
         run([sys.executable, "-m", "venv", p["venv"]])
     verify_python(c)
-    run([p["python"], "-m", "pip", "install", "pip==25.2"])
-    run([p["python"], "-m", "pip", "install", "torch==2.8.0", "torchvision==0.23.0", "torchaudio==2.8.0",
-         "--index-url", "https://download.pytorch.org/whl/cu126"])
-    run([p["python"], "-m", "pip", "install", "-c", ROOT / "constraints.txt", "-r", ROOT / "requirements.txt",
-         "-r", p["comfy"] / "requirements.txt"])
-    run([p["python"], "-m", "pip", "check"])
+    install_packages(c)
     validate_runtime(c, require_cuda)
     freeze = capture([p["python"], "-m", "pip", "freeze"])
     p["freeze"].parent.mkdir(parents=True, exist_ok=True)

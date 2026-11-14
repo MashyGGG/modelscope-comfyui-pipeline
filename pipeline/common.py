@@ -11,6 +11,7 @@ import subprocess
 import sys
 import time
 import uuid
+from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -122,6 +123,13 @@ def config(path=None, overrides=(), use_env=True):
         raise ValueError("COMFYUI_REF must be an immutable 40-character commit")
     if c.get("git_http_version", "HTTP/1.1") not in ("HTTP/1.1", "HTTP/2"):
         raise ValueError("git_http_version must be HTTP/1.1 or HTTP/2")
+    index = urlsplit(c.get("pypi_index_url", "https://mirrors.aliyun.com/pypi/simple"))
+    if index.scheme != "https" or not index.hostname or index.username or index.password or index.query or index.fragment:
+        raise ValueError("pypi_index_url must be an HTTPS index without embedded credentials or query parameters")
+    for key, minimum, maximum in (("pip_timeout", 1, 600), ("pip_retries", 0, 10)):
+        value = c.get(key, 30 if key == "pip_timeout" else 3)
+        if not isinstance(value, int) or not minimum <= value <= maximum:
+            raise ValueError(f"{key} must be an integer in {minimum}..{maximum}")
     for section, multiple in (("image", 8), ("video", 32)):
         s = c[section]
         for key in ("width", "height"):

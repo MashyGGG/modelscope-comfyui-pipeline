@@ -10,7 +10,7 @@
 |---|---|
 | Python 语法、Shell `bash -n` | PASS |
 | YAML 配置、模型清单、四份 UI/API JSON、API 图连接 | PASS |
-| 离线 pytest | 65 passed |
+| 离线 pytest | 71 passed |
 | `bash oneclick.sh --dry-run` | PASS；未执行安装、下载或推理 |
 | ModelScope 固定内容 revision 与 SDK 分支的四个文件路径、大小与 SHA256 | PASS，通过只读仓库 API 实查；实际 SDK 接受 master 引用 |
 | 固定 ComfyUI commit 的 Wan/Video 节点、缓存开关、history 字段、定向中断接口 | PASS，通过官方源码实查 |
@@ -43,7 +43,7 @@ ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析
 | 真实 GPU 输出 MP4 的完整解码验收 | NOT RUN |
 | A10 显存、内存、耗时测量 | NOT RUN |
 | 真实 CPU Notebook 环境安装和完整模型下载 | PASS（用户提供完整日志，约 352 秒完成 CPU PREPARATION） |
-| GPU A10 / 550.54.15 / Python 3.12 预检 | 旧版本因驱动门槛失败；新版兼容检查和独立环境修复后待实例重试 |
+| GPU A10 / 550.54.15 / Python 3.12 | 用户截图已进入 Python 3.12 依赖安装；普通依赖走 PyTorch 源低速超时，随后网络不可达；CUDA 和 E2E 尚未执行 |
 | 两个 Notebook 实例间约 25 GB 模型包传输及 GPU 复用 | NOT RUN（离线跨目录 fixture 已通过） |
 | Python 3.10/3.12 和远程 GitHub Actions | NOT RUN（已提供 CI 配置） |
 
@@ -56,6 +56,8 @@ ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析
 随后 07:31–07:37 UTC CPU 实例日志确认四个模型均下载且通过大小/SHA256 校验、工作流部署成功，最终 CPU PREPARATION PASSED，耗时 352.281 秒。07:46 UTC GPU 日志显示 A10 23028 MiB、驱动 550.54.15、Python 3.12.13，被旧的 560.35.03 驱动门槛提前拦截，尚未真正测试 CUDA。
 
 本次新增 11 项离线回归：驱动兼容下限/推荐门槛分级；Python 3.11/3.12 选择独立环境和服务身份；无 CUDA 不可通过；新建版本环境时旧环境、旧标记、源码及模型保留；当前环境重复安装复用；模拟 CUDA 失败不能产生成功标记；解释器身份不符拒绝复用；其他 Python 版本的受管服务可明确停止但不可自动复用。环境安装和 CUDA 部分使用离线 doubles，源码复用检查使用真实临时 Git 仓库。真实 GPU 探针新增 FP16 矩阵乘法/卷积/注意力及可用时 BF16 检查；这些 GPU 运算在本地无 GPU 环境尚未执行。
+
+本次依赖下载源修复再新增 6 项离线回归，覆盖：三个官方 cu126 wheel 使用 --no-deps 和版本约束；普通依赖使用独立 PyPI 镜像并完整解析依赖；依赖失败停止且不继续成功检查；索引、超时和重试次数可配置；非法参数拒绝。只读检查已确认阿里云索引中存在 Python 3.12 的 NumPy 1.26.4、Pillow 11.3.0 及所需 nvidia-cusparselt-cu12 0.7.1 条目，未下载大 wheel，也未把索引可访问当成实例安装通过。
 
 ## 在魔搭执行真实验收
 

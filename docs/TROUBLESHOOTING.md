@@ -33,6 +33,14 @@ Git 配置只作用于 Git 传输，独立网络探测使用的 `raw.githubuserc
 - 驱动低于 525.60.13 或 Python 不在 3.10–3.12：预检失败。550.54.15 等处于最低兼容范围与推荐 560.35.03 之间的驱动改为 WARN，必须继续通过真实 CUDA 运算及完整 E2E。若实际出现不支持的 PTX 或需要新驱动的错误，按真实不兼容处理，由平台提供匹配环境；脚本不升级驱动。
 - ComfyUI 目录已存在或被修改：选择新的 `WORKSPACE_ROOT`/`COMFYUI_DIR`，脚本不会覆盖陌生目录或修改过的源码。
 - pip 安装失败：保留工作目录后重跑，已下载包可由 pip 缓存复用。检查网络、Python 和磁盘；成功后保存 `state/environments/`，其中每个 Python 版本有独立安装 JSON 和 pip-freeze。`state/active-environment.json` 指向最近通过安装验证的环境；旧 `state/installed.json` 和 `venv/` 会保留但不再自动作为当前环境使用。
+- NumPy/Pillow 下载只有十几 KB/s，随后超时、续传或 `Errno 101 网络不可达`：早期 torch 安装命令把所有普通依赖也交给了 PyTorch 索引，而且该阶段未应用约束，可能先下载 NumPy 2.x/Pillow 13 再降级。新版仅三个 cu126 wheel 使用官方源且 `--no-deps`，普通依赖默认走阿里云 PyPI，并从一开始按约束安装。先 Ctrl+C，再更新源码并重跑原命令；不要删除已下载模型或清空缓存。
+
+```bash
+git -c http.version=HTTP/1.1 pull --ff-only
+bash oneclick.sh --gpu-validate
+```
+
+需要使用实例原有的阿里云内网镜像时，可执行 `bash oneclick.sh --gpu-validate --set pypi_index_url=https://mirrors.cloud.aliyuncs.com/pypi/simple`。可以用 `curl -I --connect-timeout 10 --max-time 20 https://mirrors.aliyun.com/pypi/simple/numpy/` 检查普通依赖索引。索引页面可访问不保证大 wheel 能顺利下载；如果仍网络不可达，应先恢复实例网络，不通过反复增加超时掩盖问题。
 - 可用磁盘不足：默认首次要求 60 GiB，可用 `--set min_disk_gib=40` 调整，但需自行确认缓存、依赖和输出空间充足。
 
 ## 模型
