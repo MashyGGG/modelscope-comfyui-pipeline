@@ -1,0 +1,18 @@
+$ D:\code\modelscope-comfyui-pipeline\.venv-dev\Scripts\python.exe scripts/check_static.py
+[PASS] Python syntax (31 files), shell syntax, YAML/model configuration, UI/API JSON and API links
+GPU integration: NOT RUN (this command only performs static checks)
+
+$ D:\code\modelscope-comfyui-pipeline\.venv-dev\Scripts\python.exe -m pytest -q --junitxml=docs/offline-tests.xml
+............................................                             [100%]
+- generated xml file: D:\code\modelscope-comfyui-pipeline\docs\offline-tests.xml -
+44 passed in 5.69s
+
+$ C:/Program Files/Git/bin/bash.exe oneclick.sh --dry-run
+DRY RUN — no installation, download, directory creation, server or GPU inference
+Workspace: D:\mnt\workspace\modelscope-comfyui-pipeline-runtime
+ComfyUI: D:\mnt\workspace\modelscope-comfyui-pipeline-runtime\ComfyUI
+Commit: b8730510db30c8858e1e5d8e126ef19eac395560
+Models: 25083045039 bytes
+Video: 832x480, 49 frames, 16 FPS
+Plan: host preflight → install → CUDA gate → model download → workflows → start → SDXL → Wan → MP4 validation
+GPU E2E: NOT RUN

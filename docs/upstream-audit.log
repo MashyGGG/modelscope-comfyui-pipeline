@@ -1,0 +1,10 @@
+[PASS] sdxl: immutable revision, path, size and SHA256
+[PASS] wan: immutable revision, path, size and SHA256
+[PASS] umt5: immutable revision, path, size and SHA256
+[PASS] vae: immutable revision, path, size and SHA256
+[PASS] comfy_extras/nodes_wan.py
+[PASS] comfy_extras/nodes_video.py
+[PASS] comfy/cli_args.py
+[PASS] comfy_api/latest/_ui.py
+[PASS] server.py
+GPU integration: NOT RUN

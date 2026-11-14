@@ -1,0 +1,29 @@
+{
+  "workspace_root": "/mnt/workspace/modelscope-comfyui-pipeline-runtime",
+  "comfyui_ref": "b8730510db30c8858e1e5d8e126ef19eac395560",
+  "port": 8188,
+  "gpu_index": 0,
+  "min_driver": "560.35.03",
+  "min_disk_gib": 60,
+  "min_runtime_disk_gib": 16,
+  "min_ram_gib": 24,
+  "min_vram_mib": 16000,
+  "startup_timeout": 180,
+  "task_timeout": 3600,
+  "poll_interval": 2,
+  "download_attempts": 3,
+  "vae_tiled": false,
+  "image": {
+    "width": 1024, "height": 576, "steps": 24, "cfg": 7,
+    "seed": 20261114, "sampler": "euler", "scheduler": "normal",
+    "prompt": "A small red sailboat on a calm alpine lake, distant snowy mountains, soft morning light, cinematic photography",
+    "negative": "blurry, low quality, text, watermark"
+  },
+  "video": {
+    "width": 832, "height": 480, "frames": 49, "fps": 16,
+    "steps": 20, "cfg": 5, "seed": 20261115,
+    "sampler": "uni_pc", "scheduler": "simple", "shift": 8,
+    "prompt": "The red sailboat gently moves across the calm lake, soft ripples on the water, camera slowly pans right, cinematic natural motion",
+    "negative": "static, blurry, distorted, low quality, text, watermark"
+  }
+}
