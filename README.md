@@ -180,6 +180,8 @@ $WORKSPACE_ROOT/
 
 ## 工作流与验收
 
+单任务细化提示词另见 [原版保留与 prompt 微调](docs/PROMPT_TUNING.md)。`config/single.original.yaml` 保存原 image/video 参数，`config/single.refined.yaml` 细化红色帆船、白帆、雪山、倒影及慢镜头，保持 seed 和采样参数相同；执行 `bash oneclick.sh --gpu-validate --config config/single.refined.yaml`。默认配置及原 prompt 保持不变，细化版真实画面效果待 GPU 实测。
+
 `workflows/ui/` 是可以导入浏览器的 UI 工作流；自动部署到 `ComfyUI/user/default/workflows/modelscope-pipeline/`。`workflows/api/` 是供 `/prompt` 使用的 API JSON，两者由同一构建器生成，避免内容偏离。视频 UI 中的示例图片需要自行选择；自动 E2E 会绑定真实 PNG。
 
 SDXL 默认 1024×576、24 steps、CFG 7。Wan 默认 832×480、49 帧、16 FPS、20 steps、CFG 5、shift 8。文生图与视频提示词分别配置。固定 seed 便于复现参数，不保证跨硬件逐像素一致。

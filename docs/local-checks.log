@@ -1,3 +1,5 @@
+[PASS] Original configuration equals defaults; refined configuration changes only four prompt strings
+
 $ D:\code\modelscope-comfyui-pipeline\.venv-dev\Scripts\python.exe scripts/check_static.py
 [PASS] Python syntax (37 files), shell syntax, YAML/model configuration, UI/API JSON and API links
 GPU integration: NOT RUN (this command only performs static checks)
@@ -6,7 +8,7 @@ $ D:\code\modelscope-comfyui-pipeline\.venv-dev\Scripts\python.exe -m pytest -q 
 ........................................................................ [ 69%]
 ...............................                                          [100%]
 - generated xml file: D:\code\modelscope-comfyui-pipeline\docs\offline-tests.xml -
-103 passed in 16.49s
+103 passed in 13.34s
 
 $ C:/Program Files/Git/bin/bash.exe oneclick.sh --dry-run
 DRY RUN — no installation, download, directory creation, server or GPU inference
@@ -30,5 +32,25 @@ Task lake: image=1024x576 seed=101 prompt=A small red sailboat on a calm alpine 
 Task lake: video=832x480 frames=49 seed=201 prompt=The red sailboat gently moves across the calm lake, soft ripples on the water, camera slowly pans right, cinematic natural motion
 Task lighthouse: image=1024x576 seed=102 prompt=A white lighthouse above a rocky coast at sunset, warm light, cinematic photography
 Task lighthouse: video=832x480 frames=49 seed=202 prompt=Ocean waves roll gently against the rocks, camera slowly moves toward the white lighthouse, cinematic natural motion
+Plan: host preflight → install → CUDA gate → model download → workflows → start → SDXL → Wan → MP4 validation
+GPU E2E: NOT RUN
+
+$ C:/Program Files/Git/bin/bash.exe oneclick.sh --dry-run --config config/single.original.yaml
+DRY RUN — no installation, download, directory creation, server or GPU inference
+Workspace: D:\mnt\workspace\modelscope-comfyui-pipeline-runtime
+ComfyUI: D:\mnt\workspace\modelscope-comfyui-pipeline-runtime\ComfyUI
+Commit: b8730510db30c8858e1e5d8e126ef19eac395560
+Models: 25083045039 bytes
+Video: 832x480, 49 frames, 16 FPS
+Plan: host preflight → install → CUDA gate → model download → workflows → start → SDXL → Wan → MP4 validation
+GPU E2E: NOT RUN
+
+$ C:/Program Files/Git/bin/bash.exe oneclick.sh --dry-run --config config/single.refined.yaml
+DRY RUN — no installation, download, directory creation, server or GPU inference
+Workspace: D:\mnt\workspace\modelscope-comfyui-pipeline-runtime
+ComfyUI: D:\mnt\workspace\modelscope-comfyui-pipeline-runtime\ComfyUI
+Commit: b8730510db30c8858e1e5d8e126ef19eac395560
+Models: 25083045039 bytes
+Video: 832x480, 49 frames, 16 FPS
 Plan: host preflight → install → CUDA gate → model download → workflows → start → SDXL → Wan → MP4 validation
 GPU E2E: NOT RUN

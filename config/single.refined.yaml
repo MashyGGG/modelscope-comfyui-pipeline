@@ -1,0 +1,15 @@
+{
+  "image": {
+    "width": 1024, "height": 576, "steps": 24, "cfg": 7,
+    "seed": 20261114, "sampler": "euler", "scheduler": "normal",
+    "prompt": "A single small red sailboat with a slender wooden mast and one white triangular sail, floating in the lower-right foreground of a calm alpine lake. Fine ripples and a clear reflection surround the glossy red hull. Snow-dusted granite peaks and dark fir forests frame the distant shore. Warm morning sunlight grazes the right ridge above cool blue shadows. Wide shore-level composition, layered mountain depth, realistic water, crisp rock textures, restrained natural colors, cinematic landscape photography.",
+    "negative": "multiple boats, rowboat, motorboat, people, buildings, text, watermark, blurry, low quality, oversaturated, warped hull, distorted sail, duplicate reflections"
+  },
+  "video": {
+    "width": 832, "height": 480, "frames": 49, "fps": 16,
+    "steps": 20, "cfg": 5, "seed": 20261115,
+    "sampler": "uni_pc", "scheduler": "simple", "shift": 8,
+    "prompt": "The red sailboat from the input image drifts slowly to the right over a short distance, with slight gentle bobbing. A light breeze softly stirs its white sail. Subtle ripples spread behind the hull, and the boat's reflection bends naturally with the water. The camera makes a very slow, steady forward push while keeping the whole boat in frame. Snowy mountains and the forest shoreline remain stable; warm morning light and cool blue shadows stay consistent. A continuous cinematic shot with gentle, physically plausible motion.",
+    "negative": "rapid movement, large waves, camera shake, sudden zoom, cuts, flicker, morphing, warped hull, distorted sail, duplicate boats, inconsistent reflections, blurry, low quality, text, watermark"
+  }
+}

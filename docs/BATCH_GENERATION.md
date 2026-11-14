@@ -19,6 +19,8 @@ bash oneclick.sh --gpu-validate
 
 服务已经启动且健康时，可使用 `bash oneclick.sh --stage e2e` 直接创建下一次生成。更换 prompt 或 seed 后创建新运行，不使用已通过运行的 `--resume`。原有单任务失败恢复仍使用原 run_id。
 
+需要更细的单任务场景和动作描述时，使用 `--config config/single.refined.yaml`；微调前配置单独保存在 `config/single.original.yaml`，默认 prompt 不变。细节、模型支持边界及对照操作见 [单任务 prompt 微调](PROMPT_TUNING.md)。
+
 ## 2. 配置 tasks 数组
 
 首次复制示例一次，之后编辑自己的文件：

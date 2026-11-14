@@ -1,0 +1,15 @@
+{
+  "image": {
+    "width": 1024, "height": 576, "steps": 24, "cfg": 7,
+    "seed": 20261114, "sampler": "euler", "scheduler": "normal",
+    "prompt": "A small red sailboat on a calm alpine lake, distant snowy mountains, soft morning light, cinematic photography",
+    "negative": "blurry, low quality, text, watermark"
+  },
+  "video": {
+    "width": 832, "height": 480, "frames": 49, "fps": 16,
+    "steps": 20, "cfg": 5, "seed": 20261115,
+    "sampler": "uni_pc", "scheduler": "simple", "shift": 8,
+    "prompt": "The red sailboat gently moves across the calm lake, soft ripples on the water, camera slowly pans right, cinematic natural motion",
+    "negative": "static, blurry, distorted, low quality, text, watermark"
+  }
+}

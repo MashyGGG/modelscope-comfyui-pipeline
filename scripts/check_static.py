@@ -18,6 +18,9 @@ def main():
     for path in sources:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     config()
+    for name in ("single.original.yaml", "single.refined.yaml"):
+        for graph in build(config(ROOT / "config" / name), specifications()):
+            validate(graph)
     for _, effective in task_configs(config(ROOT / "config/batch.example.yaml")):
         for graph in build(effective, specifications()):
             validate(graph)
