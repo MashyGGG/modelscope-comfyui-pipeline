@@ -44,7 +44,8 @@ def test_sdk_token_login_tuple_and_exact_single_file_arguments(tmp_path, monkeyp
 
 def test_failed_download_has_bounded_retries_and_no_secret_output(tmp_path, monkeypatch, capsys):
     c = config(overrides=[f"workspace_root={tmp_path.as_posix()}", "download_attempts=2"])
-    item = {"key": "test", "directory": "vae", "file": "model.bin", "size": 4, "sha256": "0"*64}
+    item = {"key": "test", "repo": "test/repo", "revision": "a"*40,
+            "directory": "vae", "file": "model.bin", "size": 4, "sha256": "0"*64}
     calls = []
     def remote(_):
         calls.append(1)

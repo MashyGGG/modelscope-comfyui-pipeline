@@ -19,6 +19,8 @@ def specifications(path=None):
             raise ValueError("Model revision and SHA256 must be immutable hashes")
         if m["size"] <= 0 or m["directory"] not in ("checkpoints", "diffusion_models", "text_encoders", "vae"):
             raise ValueError("Invalid model size/directory")
+        if "sdk_revision" in m and (not isinstance(m["sdk_revision"], str) or not re.fullmatch(r"[A-Za-z0-9_.\-/]+", m["sdk_revision"])):
+            raise ValueError("sdk_revision must be an explicit branch/tag supported by ModelScope SDK")
         checked_path(ROOT, m["file"])
     return items
 
@@ -93,23 +95,36 @@ def download(c, items, skip=False):
             if dest.exists() or dest.is_symlink():
                 raise RuntimeError(f"Existing invalid destination preserved; inspect or select a new directory: {dest}")
             cached = None
+            sdk_revision = m.get("sdk_revision", m["revision"])
+            print(f"[INFO] ModelScope repo={m['repo']}; pinned_revision={m['revision']}; "
+                  f"sdk_revision={sdk_revision}; file={m['file']}", flush=True)
             for attempt in range(1, int(c["download_attempts"]) + 1):
                 try:
                     remote_metadata(m)
+                    if sdk_revision != m["revision"]:
+                        # SDK 1.29.2 resolves branch/tag names, not arbitrary commit hashes.
+                        # Both references must expose the exact pinned bytes; never silently change weights.
+                        remote_metadata({**m, "revision": sdk_revision})
+                        print(f"[PASS] {m['key']} pinned and SDK-reference metadata match size/SHA256", flush=True)
                     from modelscope.hub.file_download import model_file_download
                     from modelscope.hub.api import HubApi
                     cookies = None
                     token = os.environ.get("MODELSCOPE_API_TOKEN")
                     if token:
                         _, cookies = HubApi().login(token)
-                    cached = Path(model_file_download(m["repo"], file_path=m["file"], revision=m["revision"],
+                    cached = Path(model_file_download(m["repo"], file_path=m["file"], revision=sdk_revision,
                                                       cache_dir=str(p["cache"]), cookies=cookies))
                     if not valid(cached, m):
                         raise RuntimeError(f"Downloaded file failed SHA256/size: {m['key']}")
                     break
                 except Exception as exc:
-                    # Do not print SDK exception strings: private download URLs may contain credentials.
+                    # Suppress arbitrary SDK/network URLs; revision lookup errors need actionable detail.
                     print(f"[FAIL] {m['key']} attempt {attempt}: {type(exc).__name__}", flush=True)
+                    if type(exc).__name__ == "NotExistError":
+                        from .logging import sanitized
+                        detail = re.sub(r"https?://\S+", "[URL REDACTED]", str(exc))
+                        print(f"[DETAIL] {sanitized(detail[:1000])}", flush=True)
+                        print("[HINT] Check sdk_revision (SDK branch/tag), repository and file path; pinned SHA256 remains mandatory", flush=True)
                     if attempt == int(c["download_attempts"]):
                         raise RuntimeError(f"Model download failed: {m['key']}; cache preserved for retry") from None
                     time.sleep(min(attempt * 2, 10))

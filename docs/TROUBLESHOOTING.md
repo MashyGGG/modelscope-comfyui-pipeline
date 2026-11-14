@@ -37,6 +37,15 @@ Git 配置只作用于 Git 传输，独立网络探测使用的 `raw.githubuserc
 
 ## 模型
 
+- SDXL 刚开始下载即连续 `NotExistError`：早期配置将 commit SHA 直接交给 SDK 1.29.2，而该 SDK 版本解析实际只接受分支/标签。更新源码后，配置显式区分内容 `revision` 和 `sdk_revision=master`，下载前校验两类引用、下载后校验真实字节的 SHA256。无需修改系统 torch 或重装 ComfyUI。
+
+```bash
+git -c http.version=HTTP/1.1 pull --ff-only
+bash oneclick.sh --cpu-prepare
+```
+
+只想单独重试模型阶段时使用 `bash oneclick.sh --stage download`，下载后再运行完整 CPU 准备命令完成工作流部署。使用自己的 `--models` 时，应将同一份配置中的 `sdk_revision` 更新为 SDK 可解析的分支/标签，仍保留内容 commit、大小和 SHA256 锁定；不能直接把内容 revision 改为 master 绕过校验。
+
 - 下载失败：检查 ModelScope 连通性、可选 token 权限、磁盘；重跑完整命令或 `--stage download`。已完成且哈希正确的模型不会重新下载；未完成部分由 SDK 续传。
 - 固定 revision/路径/SHA256 不一致：运行 `python scripts/audit_upstream.py` 核对。禁止把其他来源同名文件当作同一模型。
 - 目标文件已经存在但损坏：原文件保留，明确失败。检查后自行处理，或改用新的运行目录，脚本不自动删除用户文件。

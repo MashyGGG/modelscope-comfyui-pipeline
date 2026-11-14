@@ -3,6 +3,7 @@
     {
       "key": "sdxl", "repo": "AI-ModelScope/stable-diffusion-xl-base-1.0",
       "revision": "3bc892782d6062ef9e880390ee8b2d5d69273f38",
+      "sdk_revision": "master",
       "file": "sd_xl_base_1.0.safetensors", "directory": "checkpoints",
       "size": 6938078334,
       "sha256": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b"
@@ -10,6 +11,7 @@
     {
       "key": "wan", "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "revision": "594fe158780d7aa76539080fa06dce5e955fea53",
+      "sdk_revision": "master",
       "file": "split_files/diffusion_models/wan2.2_ti2v_5B_fp16.safetensors",
       "directory": "diffusion_models", "size": 9999658848,
       "sha256": "456f901338bd9eadbded3828b819109a9b68e8a525ca5cf8d0049a69fcfeca1e"
@@ -17,6 +19,7 @@
     {
       "key": "umt5", "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "revision": "594fe158780d7aa76539080fa06dce5e955fea53",
+      "sdk_revision": "master",
       "file": "split_files/text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
       "directory": "text_encoders", "size": 6735906897,
       "sha256": "c3355d30191f1f066b26d93fba017ae9809dce6c627dda5f6a66eaa651204f68"
@@ -24,6 +27,7 @@
     {
       "key": "vae", "repo": "Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
       "revision": "594fe158780d7aa76539080fa06dce5e955fea53",
+      "sdk_revision": "master",
       "file": "split_files/vae/wan2.2_vae.safetensors", "directory": "vae",
       "size": 1409400960,
       "sha256": "e40321bd36b9709991dae2530eb4ac303dd168276980d3e9bc4b6e2b75fed156"

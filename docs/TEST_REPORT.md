@@ -10,9 +10,9 @@
 |---|---|
 | Python 语法、Shell `bash -n` | PASS |
 | YAML 配置、模型清单、四份 UI/API JSON、API 图连接 | PASS |
-| 离线 pytest | 49 passed |
+| 离线 pytest | 54 passed |
 | `bash oneclick.sh --dry-run` | PASS；未执行安装、下载或推理 |
-| 固定 ModelScope revision 的四个真实文件路径、大小与 SHA256 | PASS，通过只读仓库 API 实查 |
+| ModelScope 固定内容 revision 与 SDK 分支的四个文件路径、大小与 SHA256 | PASS，通过只读仓库 API 实查；实际 SDK 接受 master 引用 |
 | 固定 ComfyUI commit 的 Wan/Video 节点、缓存开关、history 字段、定向中断接口 | PASS，通过官方源码实查 |
 
 原始离线结果：[local-checks.log](local-checks.log)、[offline-tests.xml](offline-tests.xml)；联网核实结果：[upstream-audit.log](upstream-audit.log)。
@@ -27,6 +27,10 @@
 
 HTTP/1.1 修复新增 5 项测试，使用真实临时 Git 仓库验证本地协议配置、全局/旧 ComfyUI 配置不变、旧配置文件回退默认 HTTP/1.1、首次 fetch 与失败后重试均先设置协议、拒绝修改非受管仓库，以及非法协议值校验。fetch 失败以离线方式注入，未将本地配置测试当成远程网络问题已解决的证据。
 
+ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析器、模拟远程分支列表，复现 commit SHA 被拒绝而 master 被接受；验证下载前先核对固定内容 commit 和 SDK 引用的元数据，再向 SDK 传入显式分支；分支元数据漂移或下载字节哈希错误均拒绝部署。离线检查依赖中加入固定 SDK，CI 同样安装，以覆盖实际解析行为。
+
+另已只读联网复现：SDXL 与 Wan 配置中的 SHA 在 SDK 1.29.2 下返回 NotExistError，master 可以解析；四个文件的 master 元数据与固定内容 revision 的大小/SHA256 完全一致。本地没有下载完整权重，此结果仅证明版本解析与元数据符合预期。
+
 ## 尚未执行
 
 | 验收项 | 状态 |
@@ -38,13 +42,15 @@ HTTP/1.1 修复新增 5 项测试，使用真实临时 Git 仓库验证本地协
 | Wan2.2 真实读取该 PNG 并生成 49 帧视频 | NOT RUN |
 | 真实 GPU 输出 MP4 的完整解码验收 | NOT RUN |
 | A10 显存、内存、耗时测量 | NOT RUN |
-| 真实 CPU Notebook 环境安装和完整模型下载 | 已尝试：CPU 基础预检通过；GitHub fetch 因 TLS 断流失败，依赖安装及模型下载尚未执行 |
+| 真实 CPU Notebook 环境安装和完整模型下载 | 用户日志确认：HTTP/1.1 fetch、依赖安装、pip check 和 CPU 包导入通过；随后 SDXL 下载版本解析失败；修复后完整下载待验证 |
 | 两个 Notebook 实例间约 25 GB 模型包传输及 GPU 复用 | NOT RUN（离线跨目录 fixture 已通过） |
 | Python 3.10/3.12 和远程 GitHub Actions | NOT RUN（已提供 CI 配置） |
 
 当前没有已连接的魔搭 A10 Notebook；本地也没有可用的 nvidia-smi。因此本报告不能作为 GPU E2E 通过证明。
 
-用户提供的 2026-11-14 CPU 实例日志显示：系统为 Linux x86_64、Python 3.11.11，CPU 准备预检通过；ComfyUI fetch 在约 372 秒后出现 GnuTLS recv error、EOF 及 index-pack 错误，退出码 128。已针对该传输兼容性问题默认启用 Git HTTP/1.1；修复后的实例重试结果待验证。
+用户提供的 2026-11-14 CPU 实例日志显示：系统为 Linux x86_64、Python 3.11.11，CPU 准备预检通过；早期 ComfyUI fetch 在约 372 秒后出现 GnuTLS recv error、EOF 及 index-pack 错误，退出码 128。默认启用 Git HTTP/1.1 后，实例重试已确认源码拉取成功，见下段。
+
+后续同日 07:16–07:22 UTC 日志确认 HTTP/1.1 fetch 在约 7.7 秒完成，ComfyUI 及依赖安装通过，模型下载报 NotExistError。根因为 SDK 分支/标签解析与 commit SHA 不兼容，已修复并保持内容 SHA256 锁定；实际约 25 GB 权重下载及 GPU E2E 仍待用户实例完成。
 
 ## 在魔搭执行真实验收
 

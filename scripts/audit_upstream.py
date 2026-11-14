@@ -12,9 +12,26 @@ from pipeline.models import remote_metadata, specifications
 
 def main():
     c = config()
+    from modelscope.hub.api import HubApi
+    api = HubApi()
+    original_request = api.session.request
+    def bounded_request(method, url, **kwargs):
+        kwargs.setdefault("timeout", 30)
+        return original_request(method, url, **kwargs)
+    api.session.request = bounded_request
+    checked_references = set()
     for item in specifications():
         remote_metadata(item)
         print(f"[PASS] {item['key']}: immutable revision, path, size and SHA256", flush=True)
+        if item.get("sdk_revision", item["revision"]) != item["revision"]:
+            remote_metadata({**item, "revision": item["sdk_revision"]})
+            print(f"[PASS] {item['key']}: SDK reference {item['sdk_revision']} matches pinned size/SHA256", flush=True)
+        reference = item.get("sdk_revision", item["revision"])
+        key = (item["repo"], reference)
+        if key not in checked_references:
+            resolved = api.get_valid_revision(item["repo"], revision=reference, endpoint="https://modelscope.cn")
+            print(f"[PASS] {item['key']}: SDK accepts download revision {resolved}", flush=True)
+            checked_references.add(key)
     base = f"https://raw.githubusercontent.com/Comfy-Org/ComfyUI/{c['comfyui_ref']}/"
     checks = {
         "comfy_extras/nodes_wan.py": ["class Wan22ImageToVideoLatent"],

@@ -148,7 +148,9 @@ $WORKSPACE_ROOT/
 
 源码目录的 `logs/` 和 `output/` 预留给本地工具；Notebook 的实际产物统一写到上述持久化运行目录。固定报告副本会更新，各 run 的历史产物和报告保留。已损坏的目标模型不自动删除或替换，需要用户检查或选择新目录；下载中断的 SDK 缓存会保留。模型部署采用符号链接，不额外复制全部权重。
 
-`config/models.yaml` 固定仓库、commit、远程路径、字节大小和 SHA256。实际下载使用 ModelScope `model_file_download` 单文件接口，SDK 实现 HTTP Range 续传和进度显示，外层有限次重试。下载前核对远程固定 revision 元数据，下载后重新计算 SHA256；不会下载整个仓库，不会自动改用其他来源。
+`config/models.yaml` 固定仓库、内容 commit（`revision`）、远程路径、字节大小和 SHA256，并显式配置 SDK 下载引用 `sdk_revision`。固定的 ModelScope SDK 1.29.2 实际按分支/标签解析下载版本，直接传入 commit SHA 会触发 `NotExistError`，因此 `sdk_revision` 使用已核实的 `master`。下载前分别核对固定 commit 与 SDK 分支的文件大小/SHA256，两者必须都匹配配置；下载后再次计算实际文件 SHA256。分支内容变化会明确失败，不能静默替换权重。
+
+实际下载仍使用官方 `model_file_download` 单文件接口，SDK 实现 HTTP Range 续传和进度显示，外层有限次重试；不会下载整个仓库，不会改用其他来源。日志记录内容 commit、SDK 引用、远程路径，并为 SDK 版本/文件不存在错误提供脱敏详情。修复前已安装成功、停在模型下载的实例，只需更新源码后重跑 `bash oneclick.sh --cpu-prepare`，环境和完整文件会复用。
 
 ## 工作流与验收
 
@@ -173,10 +175,10 @@ SDXL 默认 1024×576、24 steps、CFG 7。Wan 默认 832×480、49 帧、16 FPS
 ```bash
 python -m venv .venv-dev
 source .venv-dev/bin/activate
-python -m pip install pytest==8.4.2 requests==2.32.5 PyYAML==6.0.2 Pillow==11.3.0 av==15.1.0
+python -m pip install pytest==8.4.2 requests==2.32.5 PyYAML==6.0.2 Pillow==11.3.0 av==15.1.0 modelscope==1.29.2
 python scripts/check_static.py
 python -m pytest -q
-python scripts/audit_upstream.py   # 只读联网检查，不下载权重
+python scripts/audit_upstream.py   # 核实两类引用元数据和真实 SDK 版本解析，不下载权重
 ```
 
 静态检查需要 Bash；Windows 自动使用 Git for Windows 的 Bash。PowerShell 使用 `.venv-dev\Scripts\python.exe` 运行同样的 Python 命令。GitHub Actions 在 Linux/Python 3.10、3.11、3.12 执行离线检查，远程 CI 结果需实际推送后查看。

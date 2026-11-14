@@ -1,7 +1,13 @@
 [PASS] sdxl: immutable revision, path, size and SHA256
+[PASS] sdxl: SDK reference master matches pinned size/SHA256
+[PASS] sdxl: SDK accepts download revision master
 [PASS] wan: immutable revision, path, size and SHA256
+[PASS] wan: SDK reference master matches pinned size/SHA256
+[PASS] wan: SDK accepts download revision master
 [PASS] umt5: immutable revision, path, size and SHA256
+[PASS] umt5: SDK reference master matches pinned size/SHA256
 [PASS] vae: immutable revision, path, size and SHA256
+[PASS] vae: SDK reference master matches pinned size/SHA256
 [PASS] comfy_extras/nodes_wan.py
 [PASS] comfy_extras/nodes_video.py
 [PASS] comfy/cli_args.py
