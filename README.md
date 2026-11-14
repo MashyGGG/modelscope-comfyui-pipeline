@@ -212,6 +212,30 @@ $WORKSPACE_ROOT/
 
 实际下载仍使用官方 `model_file_download` 单文件接口，SDK 实现 HTTP Range 续传和进度显示，外层有限次重试；不会下载整个仓库，不会改用其他来源。日志记录内容 commit、SDK 引用、远程路径，并为 SDK 版本/文件不存在错误提供脱敏详情。修复前已安装成功、停在模型下载的实例，只需更新源码后重跑 `bash oneclick.sh --cpu-prepare`，环境和完整文件会复用。
 
+## 模型与生成质量
+
+项目下载四个权重文件，合计约 **25.08 GB**；其中两个是主生成模型，另外两个是视频所需的文本编码器和 VAE。文件、来源、大小及 SHA256 见 [模型清单](config/models.yaml)。
+
+| 模型/组件 | 用途 |
+|---|---|
+| SDXL Base 1.0（`sd_xl_base_1.0.safetensors`） | 根据图片 prompt 生成 PNG |
+| Wan2.2 TI2V 5B FP16（`wan2.2_ti2v_5B_fp16.safetensors`） | 根据输入 PNG 和视频 prompt 生成视频 |
+| UMT5 XXL FP8（`umt5_xxl_fp8_e4m3fn_scaled.safetensors`） | 编码视频提示词 |
+| Wan2.2 VAE（`wan2.2_vae.safetensors`） | 编解码视频画面 |
+
+当前默认配置及用户 A10 实例已验证的输出规格：
+
+| 产物 | 已验证规格 | 质量说明 |
+|---|---|---|
+| 图片 | 1024×576 PNG | 用户提供的雪山湖泊样例已有光影和空间层次；复杂结构、精确位置、数量和文字仍可能不符合提示词 |
+| 视频 | 832×480、49 帧、16 FPS、约 3.06 秒，MP4/H.264 | 已完成真实生成、完整解码和参数验收；动作连贯性、主体形状和细节稳定性仍需人工播放检查 |
+
+SDXL 官方模型卡说明复杂组合关系、文字和完美写实仍有局限，增加 prompt 细节不保证逐项准确呈现。[SDXL 官方说明](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0)
+
+Wan2.2 TI2V 5B 官方支持 720P 级别生成；本项目目前实测的是上述 480 高度配置。提高分辨率或帧数会增加显存需求和生成耗时，需要在目标实例重新验证，不能直接将模型标称能力视为本仓库已验证的输出质量。[Wan 官方说明](https://github.com/Wan-Video/Wan2.2#run-text-image-to-video-generation)
+
+**文件、分辨率和完整解码验收通过，不代表画面细节一定符合 prompt。** 最终还需人工查看图片并播放视频；具体实机条件及通过记录见 [测试报告](docs/TEST_REPORT.md)。
+
 ## 工作流与验收
 
 单任务细化提示词另见 [原版保留与 prompt 微调](docs/PROMPT_TUNING.md)。`config/single.original.yaml` 保存原 image/video 参数，`config/single.refined.yaml` 细化红色帆船、白帆、雪山、倒影及慢镜头，保持 seed 和采样参数相同；执行 `bash oneclick.sh --gpu-validate --config config/single.refined.yaml`。默认配置及原 prompt 保持不变，细化版真实画面效果待 GPU 实测。
