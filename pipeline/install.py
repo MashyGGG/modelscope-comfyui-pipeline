@@ -42,11 +42,22 @@ def validate_runtime(c, require_cuda):
     run([p["python"], "-c", code], env={**os.environ, "CUDA_VISIBLE_DEVICES": ""})
 
 
+def configure_git(c):
+    p = paths(c)
+    owner = p["state"] / "checkout-owner.json"
+    if not owner.exists() or load_data(owner) != {"path": str(p["comfy"]), "commit": c["comfyui_ref"]}:
+        raise RuntimeError("Refusing to configure Git in a ComfyUI directory outside this managed installation")
+    protocol = c.get("git_http_version", "HTTP/1.1")
+    run(["git", "-C", p["comfy"], "config", "--local", "http.version", protocol])
+    print(f"[PASS] Git HTTP transport: {protocol}; scope=local; repository={p['comfy']}", flush=True)
+
+
 def install(c, require_cuda=True):
     p = paths(c)
     marker = p["state"] / "installed.json"
     if marker.exists():
         verify(c)
+        configure_git(c)
         validate_runtime(c, require_cuda)
         state = load_data(marker)
         state["last_validation"] = "GPU_CUDA" if require_cuda else "CPU_IMPORT_ONLY"
@@ -65,6 +76,7 @@ def install(c, require_cuda=True):
         raise RuntimeError("COMFYUI_DIR already exists outside this managed installation; choose an empty directory")
     if capture(["git", "-C", p["comfy"], "status", "--porcelain", "--untracked-files=no"]):
         raise RuntimeError("Refusing to overwrite modified ComfyUI source")
+    configure_git(c)
     run(["git", "-C", p["comfy"], "fetch", "--depth", "1", "origin", c["comfyui_ref"]])
     run(["git", "-C", p["comfy"], "checkout", "--detach", c["comfyui_ref"]])
     if not p["venv"].exists():

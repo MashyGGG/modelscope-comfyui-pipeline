@@ -47,7 +47,7 @@ bash oneclick.sh --gpu-validate
 
 ```bash
 cd /mnt/workspace
-git clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
+git -c http.version=HTTP/1.1 clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
 cd modelscope-comfyui-pipeline
 bash oneclick.sh
 ```
@@ -59,6 +59,17 @@ bash oneclick.sh
 初始支持范围：Python 3.10–3.12，Linux NVIDIA 驱动 >=560.35.03，PyTorch 2.8.0/cu126。主要验收目标是 A10 24GB、32GB 主机内存；建议首次运行预留 60–80 GiB 可用磁盘。该支持范围是实现基线，尚待实机验证；不支持的驱动/Python 会明确失败。系统无需预装 torch，也不会修改系统 torch 或驱动。
 
 ComfyUI 固定为 v0.3.60 的 commit `b8730510db30c8858e1e5d8e126ef19eac395560`，使用其原生节点。选择这个已核实接口的版本以保证工作流稳定，而非运行时追随 latest。主要依赖见 `constraints.txt`，安装成功后保留实际 `pip-freeze.txt`；未声称所有间接依赖完全锁定。
+
+Git 下载默认使用 HTTP/1.1：安装器在首次安装、失败重试或复用安装时，为本项目受管 ComfyUI 仓库写入本地 `http.version` 配置，日志显示协议和作用目录。不会修改全局 Git 配置或旧 ComfyUI。默认值位于 `config/defaults.yaml` 的 `git_http_version`。首次 clone 时项目代码尚未运行，因此下方示例显式使用 `git -c http.version=HTTP/1.1 clone ...`。
+
+已有源码更新后重试 CPU 准备：
+
+```bash
+git -c http.version=HTTP/1.1 pull --ff-only
+bash oneclick.sh --cpu-prepare
+```
+
+保留上次失败的受管安装目录即可重试。HTTP/1.1 配置用于改善 Git 传输兼容性，实际网络仍可能中断；它不影响 Python 对 `raw.githubusercontent.com` 的独立网络探测。
 
 ## 常用命令
 

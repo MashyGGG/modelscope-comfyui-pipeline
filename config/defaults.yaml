@@ -1,6 +1,7 @@
 {
   "workspace_root": "/mnt/workspace/modelscope-comfyui-pipeline-runtime",
   "comfyui_ref": "b8730510db30c8858e1e5d8e126ef19eac395560",
+  "git_http_version": "HTTP/1.1",
   "port": 8188,
   "gpu_index": 0,
   "min_driver": "560.35.03",

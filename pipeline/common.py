@@ -120,6 +120,8 @@ def config(path=None, overrides=(), use_env=True):
         c[key] = str(Path(c[key]).expanduser().resolve())
     if not re.fullmatch(r"[0-9a-f]{40}", c["comfyui_ref"]):
         raise ValueError("COMFYUI_REF must be an immutable 40-character commit")
+    if c.get("git_http_version", "HTTP/1.1") not in ("HTTP/1.1", "HTTP/2"):
+        raise ValueError("git_http_version must be HTTP/1.1 or HTTP/2")
     for section, multiple in (("image", 8), ("video", 32)):
         s = c[section]
         for key in ("width", "height"):

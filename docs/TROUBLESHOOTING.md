@@ -10,6 +10,17 @@ clone 完成后运行 `bash scripts/check_environment.sh --network`，将终端�
 
 ## 环境与安装
 
+- GitHub clone 出现 HTTP/2 framing error：使用 `git -c http.version=HTTP/1.1 clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git`。代码尚未 clone 时无法自行设置协议，所以需要命令行参数。
+- ComfyUI fetch 出现 GnuTLS、EOF 或 index-pack 错误：通常表示源码包传输中断。新版安装器默认将受管仓库设置为 HTTP/1.1，更新本项目后直接重试；旧目录会保留，日志应出现 `[PASS] Git HTTP transport: HTTP/1.1`。这不保证消除所有网络断流。
+
+```bash
+# 在本项目源码目录更新并重试
+git -c http.version=HTTP/1.1 pull --ff-only
+bash oneclick.sh --cpu-prepare
+```
+
+Git 配置只作用于 Git 传输，独立网络探测使用的 `raw.githubusercontent.com` 地址仍可能连接失败；该域名探测失败不等于本地源码缺失，也不能单独证明 `github.com` Git fetch 必然失败。
+
 - CPU 缺少 nvidia-smi：CPU 准备模式会 SKIP，属于正常情况；默认 GPU 命令仍会失败。CPU 安装的是 CUDA 构建 torch，导入成功并不意味着已完成 CUDA 验证。
 - GPU 无法复用 CPU 虚拟环境：两个实例的基础镜像/解释器可能不同。保留旧目录，选择新的 WORKSPACE_ROOT 并导入模型包；GPU 会重建环境。不要把 CPU 的 installed.json/PID 单独复制过去冒充安装完成。
 - GPU `Prepared model missing/incomplete`：两个实例可能并不共享存储。先导出/传输/导入模型包，再运行 --gpu-validate；该模式不会自动补下权重。

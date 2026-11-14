@@ -9,6 +9,8 @@
 
 每条项目命令自动输出带时间戳的日志及 JSON 摘要。源码仓库为 `https://github.com/MashyGGG/modelscope-comfyui-pipeline`，可直接使用下方 clone 命令。两种方式均使用项目内置提示词，最终执行真实文生图、图生视频和 MP4 验收。
 
+所有首次 clone 示例显式使用 HTTP/1.1。项目安装 ComfyUI 时也会自动为受管仓库设置本地 HTTP/1.1，覆盖首次安装和失败重试，不改全局配置或旧 ComfyUI。已有源码可用 `git -c http.version=HTTP/1.1 pull --ff-only` 更新后重新运行准备/验证命令；无需删除失败目录。
+
 实例使用 Linux x86_64、Python 3.10–3.12。GPU 要求 NVIDIA 驱动 >=560.35.03，主要目标 A10 24GB。首次建议预留 60–80 GiB 可用空间。
 
 ## 方式一：拆分验证（CPU + GPU）
@@ -19,7 +21,7 @@ CPU 负责安装环境、下载并校验模型；GPU 负责驱动/CUDA 检查和
 
 ```bash
 cd /mnt/workspace
-git clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
+git -c http.version=HTTP/1.1 clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
 cd modelscope-comfyui-pipeline
 export WORKSPACE_ROOT=/mnt/workspace/modelscope-comfyui-pipeline-runtime
 bash scripts/check_environment.sh --cpu --network
@@ -61,7 +63,7 @@ GPU 实例分别 clone 同一版本源码，再执行：
 
 ```bash
 cd /mnt/workspace
-git clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
+git -c http.version=HTTP/1.1 clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
 cd modelscope-comfyui-pipeline
 export WORKSPACE_ROOT=/mnt/workspace/modelscope-comfyui-pipeline-runtime
 bash scripts/check_environment.sh --network
@@ -79,7 +81,7 @@ bash oneclick.sh --gpu-validate
 
 ```bash
 cd /mnt/workspace
-git clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
+git -c http.version=HTTP/1.1 clone https://github.com/MashyGGG/modelscope-comfyui-pipeline.git
 cd modelscope-comfyui-pipeline
 export WORKSPACE_ROOT=/mnt/workspace/modelscope-comfyui-pipeline-runtime
 bash oneclick.sh
