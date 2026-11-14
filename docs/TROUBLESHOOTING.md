@@ -22,7 +22,7 @@ bash oneclick.sh --cpu-prepare
 Git 配置只作用于 Git 传输，独立网络探测使用的 `raw.githubusercontent.com` 地址仍可能连接失败；该域名探测失败不等于本地源码缺失，也不能单独证明 `github.com` Git fetch 必然失败。
 
 - CPU 缺少 nvidia-smi：CPU 准备模式会 SKIP，属于正常情况；默认 GPU 命令仍会失败。CPU 安装的是 CUDA 构建 torch，导入成功并不意味着已完成 CUDA 验证。
-- GPU 无法复用 CPU 虚拟环境：两个实例的基础镜像/解释器可能不同。保留旧目录，选择新的 WORKSPACE_ROOT 并导入模型包；GPU 会重建环境。不要把 CPU 的 installed.json/PID 单独复制过去冒充安装完成。
+- CPU Python 3.11、GPU Python 3.12：新版自动分别使用 `venvs/py3.11` 和 `venvs/py3.12`，共享已校验的模型和受管源码，保留旧 `venv/`。更新代码后直接重跑 `--gpu-validate`。同一 Python 版本但基础镜像不兼容、或环境被人工搬动时，选择新的 WORKSPACE_ROOT 并导入模型包重建；不要复制 installed.json/PID 冒充安装完成。详见 [运行环境兼容说明](RUNTIME_COMPATIBILITY.md)。
 - GPU `Prepared model missing/incomplete`：两个实例可能并不共享存储。先导出/传输/导入模型包，再运行 --gpu-validate；该模式不会自动补下权重。
 - 导出空间不足：tar 包不压缩，额外需要约 25.08 GB。可把导出目标放在其他可写且空间足够的挂载点。
 - 导入清单或哈希不匹配：检查源码/config/models.yaml 版本是否相同、传输是否完整；不自动覆盖损坏文件，也不更换权重来源。
@@ -30,9 +30,9 @@ Git 配置只作用于 Git 传输，独立网络探测使用的 `raw.githubuserc
 - Windows 正常运行仅支持 `--dry-run` 和离线测试；实际部署目标为 Linux GPU Notebook。
 - 未检测到 nvidia-smi/GPU：确认 Notebook 已选择 GPU 实例。脚本不会申请或变更实例。
 - 系统 Python 没有 torch 不影响首次安装；虚拟环境 CUDA 检查失败才中止。
-- 驱动低于 560.35.03 或 Python 不在 3.10–3.12：使用满足支持基线的 Notebook 镜像，脚本不自动升级驱动。
+- 驱动低于 525.60.13 或 Python 不在 3.10–3.12：预检失败。550.54.15 等处于最低兼容范围与推荐 560.35.03 之间的驱动改为 WARN，必须继续通过真实 CUDA 运算及完整 E2E。若实际出现不支持的 PTX 或需要新驱动的错误，按真实不兼容处理，由平台提供匹配环境；脚本不升级驱动。
 - ComfyUI 目录已存在或被修改：选择新的 `WORKSPACE_ROOT`/`COMFYUI_DIR`，脚本不会覆盖陌生目录或修改过的源码。
-- pip 安装失败：保留工作目录后重跑，已下载包可由 pip 缓存复用。检查网络、Python 和磁盘；成功后保存 `state/pip-freeze.txt`，后续安装检查 `state/installed.json`。
+- pip 安装失败：保留工作目录后重跑，已下载包可由 pip 缓存复用。检查网络、Python 和磁盘；成功后保存 `state/environments/`，其中每个 Python 版本有独立安装 JSON 和 pip-freeze。`state/active-environment.json` 指向最近通过安装验证的环境；旧 `state/installed.json` 和 `venv/` 会保留但不再自动作为当前环境使用。
 - 可用磁盘不足：默认首次要求 60 GiB，可用 `--set min_disk_gib=40` 调整，但需自行确认缓存、依赖和输出空间充足。
 
 ## 模型

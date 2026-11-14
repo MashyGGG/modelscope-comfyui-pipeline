@@ -25,8 +25,9 @@ def main(argv=None):
     with Operation(args.log_dir or paths(c)["logs"], "environment", sys.argv,
                    None if args.log_dir else paths(c)["state"]) as operation:
         with operation.phase("Environment diagnosis"):
-            result = diagnose(c, require_cuda=args.require_cuda, network=args.network,
-                              check_space=not (paths(c)["state"] / "installed.json").is_file(), require_gpu=not args.cpu)
+            settings = {**c, "min_disk_gib": c.get("min_runtime_disk_gib", 16)} if (paths(c)["state"] / "model-manifest.json").is_file() else c
+            result = diagnose(settings, require_cuda=args.require_cuda, network=args.network,
+                              check_space=not paths(c)["install_marker"].is_file(), require_gpu=not args.cpu)
             output = operation.log.with_name(operation.log.stem + "-checks.json")
             atomic_json(output, result)
             print(f"[INFO] Full environment results: {output}")

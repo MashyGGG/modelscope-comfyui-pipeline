@@ -17,7 +17,7 @@
 
 ## 方式一：拆分验证（CPU + GPU）
 
-CPU 与 GPU 均 clone 同一版本源码，推荐相同 Linux 镜像和 Python 版本。
+CPU 与 GPU 均 clone 同一版本源码。环境按 Python 版本分别管理；CPU Python 3.11、GPU Python 3.12 可以共享同一运行根目录中的模型，由 GPU 自动安装自己的环境。
 
 CPU 实例进入项目目录后执行：
 
@@ -29,7 +29,7 @@ bash oneclick.sh --cpu-prepare
 
 CPU 安装固定的 CUDA 构建依赖、下载四个模型并校验、部署工作流；不要求显卡或驱动，不启动服务或推理，成功仅标记 CPU PREPARATION PASSED。
 
-确认两个实例共享同一存储且环境兼容时，在 GPU 实例使用相同 `WORKSPACE_ROOT` 执行 `bash oneclick.sh --gpu-validate`。若存储独立，CPU 先导出并自行传输模型包：
+确认两个实例共享同一存储时，在 GPU 实例使用相同 `WORKSPACE_ROOT` 执行 `bash oneclick.sh --gpu-validate`。Python 版本不同会使用不同的虚拟环境，不改旧环境或重新下载完整权重。若存储独立，CPU 先导出并自行传输模型包：
 
 ```bash
 # CPU 实例：需要额外约 25 GB 空间；通过自己的传输通道复制到 GPU
@@ -56,7 +56,9 @@ bash oneclick.sh
 
 合并验证无需 CPU 实例或模型传输。两种方式都以最终 `E2E VALIDATION PASSED` 为通过标志；每次实际操作自动保存日志和 JSON 摘要。CPU PREPARATION PASSED 只表示拆分方式的准备阶段完成。
 
-初始支持范围：Python 3.10–3.12，Linux NVIDIA 驱动 >=560.35.03，PyTorch 2.8.0/cu126。主要验收目标是 A10 24GB、32GB 主机内存；建议首次运行预留 60–80 GiB 可用磁盘。该支持范围是实现基线，尚待实机验证；不支持的驱动/Python 会明确失败。系统无需预装 torch，也不会修改系统 torch 或驱动。
+运行基线：Python 3.10–3.12、PyTorch 2.8.0/cu126，主要目标 A10 24GB、32GB 主机内存。NVIDIA 驱动最低兼容范围为 525.60.13，推荐 >=560.35.03；位于两者之间（例如 550.54.15）只给 WARN，必须继续通过真实 CUDA 运算和完整 E2E，不能仅凭驱动号宣布兼容。首次运行建议预留 60–80 GiB，已有模型但需要新 Python 环境时额外预留至少 16 GiB。系统无需预装 torch，不修改系统 torch 或驱动。
+
+针对 CPU Python 3.11 → GPU Python 3.12、A10 驱动 550.54.15 的升级操作和限制，见 [运行环境兼容说明](docs/RUNTIME_COMPATIBILITY.md)。
 
 ComfyUI 固定为 v0.3.60 的 commit `b8730510db30c8858e1e5d8e126ef19eac395560`，使用其原生节点。选择这个已核实接口的版本以保证工作流稳定，而非运行时追随 latest。主要依赖见 `constraints.txt`，安装成功后保留实际 `pip-freeze.txt`；未声称所有间接依赖完全锁定。
 
@@ -133,10 +135,15 @@ bash oneclick.sh --set task_timeout=7200 --set port=8190
 ```text
 $WORKSPACE_ROOT/
   ComfyUI/                      # 原生安装；模型目录链接到 SDK 缓存
-  venv/                         # Python 环境
+  venv/                         # 旧版环境保留，升级后不自动执行
+  venvs/py3.11/                 # 新版按 Python 版本分别安装
+  venvs/py3.12/
   model-cache/                  # 四个指定文件，断点与完整文件复用
   workflows/api/                # 部署后的 API JSON
-  state/                        # 安装、服务身份、模型清单、操作状态
+  state/                        # 服务身份、模型清单、操作状态
+    environments/py3.12.json     # 该 Python 环境的独立安装记录
+    environments/py3.12-pip-freeze.txt
+    active-environment.json     # 最近通过安装验证的环境位置和状态
   logs/                         # 服务与执行日志
   output/
     images/<run_id>/            # SDXL 真实 PNG
@@ -190,7 +197,7 @@ cd /mnt/workspace/modelscope-comfyui-pipeline
 bash oneclick.sh
 RUNTIME="${WORKSPACE_ROOT:-/mnt/workspace/modelscope-comfyui-pipeline-runtime}"
 cat "$RUNTIME/output/reports/e2e_report.md"
-"$RUNTIME/venv/bin/python" -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["status"]=="PASSED" and r["video"]["artifact"]["fully_decoded"]' "$RUNTIME/output/reports/e2e_report.json"
+python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["status"]=="PASSED" and r["video"]["artifact"]["fully_decoded"]' "$RUNTIME/output/reports/e2e_report.json"
 ```
 
 `--dry-run`、离线测试、合成测试 MP4 均不计入 GPU 验收。真实状态详见 [测试报告](docs/TEST_REPORT.md)。故障处理见 [排查文档](docs/TROUBLESHOOTING.md)。

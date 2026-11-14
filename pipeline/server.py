@@ -22,10 +22,11 @@ def identity(pid):
 
 
 def server_key(c):
-    return fingerprint({k: c[k] for k in ("workspace_root", "comfyui_dir", "comfyui_ref", "port", "gpu_index")})
+    return fingerprint({**{k: c[k] for k in ("workspace_root", "comfyui_dir", "comfyui_ref", "port", "gpu_index")},
+                        "python": str(paths(c)["python"])})
 
 
-def owned(c):
+def owned(c, stopping=False):
     record = paths(c)["state"] / "server.json"
     if not record.exists():
         return None
@@ -33,7 +34,13 @@ def owned(c):
     current = identity(state["pid"])
     if current is None:
         return None
-    if state["config_hash"] != server_key(c) or current != state["identity"]:
+    allowed = {server_key(c)}
+    if stopping:
+        base = {k: c[k] for k in ("workspace_root", "comfyui_dir", "comfyui_ref", "port", "gpu_index")}
+        allowed.add(fingerprint(base))  # Legacy server record before Python-specific environments.
+        if state.get("command"):
+            allowed.add(fingerprint({**base, "python": state["command"][0]}))
+    if state["config_hash"] not in allowed or current != state["identity"]:
         raise RuntimeError("Managed server identity/configuration mismatch; refusing to reuse or stop it")
     return state
 
@@ -101,7 +108,7 @@ def start(c):
 
 
 def stop(c):
-    state = owned(c)
+    state = owned(c, stopping=True)
     if not state:
         print("[PASS] No managed ComfyUI process is running", flush=True)
         return

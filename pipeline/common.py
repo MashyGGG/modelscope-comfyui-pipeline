@@ -143,11 +143,19 @@ def config(path=None, overrides=(), use_env=True):
     return c
 
 
+def runtime_tag():
+    return f"py{sys.version_info[0]}.{sys.version_info[1]}"
+
+
 def paths(c):
     base = Path(c["workspace_root"])
+    tag = runtime_tag()
+    venv = base / "venvs" / tag
     return {"base": base, "comfy": Path(c["comfyui_dir"]),
-            "cache": Path(c["model_cache_dir"]), "venv": base / "venv",
-            "python": base / "venv/bin/python", "state": base / "state",
+            "cache": Path(c["model_cache_dir"]), "venv": venv,
+            "python": venv / "bin/python", "state": base / "state",
+            "install_marker": base / "state/environments" / f"{tag}.json",
+            "freeze": base / "state/environments" / f"{tag}-pip-freeze.txt",
             "logs": base / "logs", "output": base / "output"}
 
 

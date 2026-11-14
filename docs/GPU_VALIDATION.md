@@ -11,7 +11,7 @@
 
 所有首次 clone 示例显式使用 HTTP/1.1。项目安装 ComfyUI 时也会自动为受管仓库设置本地 HTTP/1.1，覆盖首次安装和失败重试，不改全局配置或旧 ComfyUI。已有源码可用 `git -c http.version=HTTP/1.1 pull --ff-only` 更新后重新运行准备/验证命令；无需删除失败目录。
 
-实例使用 Linux x86_64、Python 3.10–3.12。GPU 要求 NVIDIA 驱动 >=560.35.03，主要目标 A10 24GB。首次建议预留 60–80 GiB 可用空间。
+实例使用 Linux x86_64、Python 3.10–3.12。驱动低于 525.60.13 失败；525.60.13 至 560.35.03 以下给出小版本兼容警告，仍需真实 CUDA 运算和 E2E；推荐 >=560.35.03。主要目标 A10 24GB，首次建议预留 60–80 GiB。详细依据和升级步骤见 [运行环境兼容说明](RUNTIME_COMPATIBILITY.md)。
 
 ## 方式一：拆分验证（CPU + GPU）
 
@@ -34,7 +34,7 @@ bash oneclick.sh --cpu-prepare
 
 ### 2A. 共享存储：在 GPU 实例直接复用
 
-仅当平台确认两个实例挂载的是同一持久化存储，并且运行根目录、缓存路径、系统镜像及 Python 兼容时，采用此方式。仅路径都叫 `/mnt/workspace` 不代表数据共享。
+仅当平台确认两个实例挂载的是同一持久化存储，并且运行根目录及缓存路径一致时，采用此方式。仅路径都叫 `/mnt/workspace` 不代表数据共享。CPU 与 GPU 的 Python 次版本可以不同：新版自动使用 `venvs/py3.11`、`venvs/py3.12` 等独立环境，共享 ComfyUI 源码与权重。
 
 在 GPU 实例进入同一项目目录：
 
@@ -45,7 +45,9 @@ bash scripts/check_environment.sh --network
 bash oneclick.sh --gpu-validate
 ```
 
-GPU 命令重新验证硬件/驱动、模型哈希、环境、CUDA 运算、节点和媒体产物。`installed.json` 中的 CPU 准备记录不能跳过 CUDA 门槛。若原虚拟环境不可用或镜像不同，保留现有目录，采用下面的独立存储方案，将模型导入一个新的 GPU 运行根目录重建环境；不直接复制虚拟环境、PID 或安装状态。
+GPU 命令重新验证硬件/驱动、模型哈希、环境、CUDA 运算、节点和媒体产物。安装记录按 Python 版本保存在 `state/environments/`，CPU 准备记录不能跳过 CUDA 门槛。旧 `venv/` 和旧安装记录保留；升级后首次在 GPU 上安装当前 Python 的独立环境，不重新下载完整权重。已有正确 ComfyUI checkout 会复用，避免再次 Git fetch。
+
+如果同一 Python 次版本对应的基础镜像仍不兼容、或版本专用目录被人工搬动，程序会明确失败并保留文件；此时选择新 WORKSPACE_ROOT，按下面方案导入模型重建环境。不要直接复制虚拟环境、PID 或安装状态。
 
 ### 2B. 独立存储：导出、传输并导入模型
 
@@ -125,7 +127,7 @@ bash oneclick.sh --stop
 
 拆分方式中 CPU 与 GPU 分别保留自己的 `logs/`；合并方式的全部日志保存在同一 GPU 实例。每次检测、准备、导出、导入、GPU 验收、合并全流程和停止都生成独立 `.log` 和 JSON 摘要；ComfyUI 长期日志为 `comfyui-*.log`。日志使用 UTC（北京时间加 8 小时），包含阶段、耗时、命令输出、警告/错误与异常堆栈；推理等待约每 30 秒输出进度。
 
-同时保存 `state/cpu-preparation.json`、`state/pip-freeze.txt`、`state/model-manifest.json`、GPU 的 `output/reports/<run_id>/`。模型包不携带 CPU 日志，如需追踪两个实例，请单独保存日志文件。
+同时保存 `state/cpu-preparation.json`、`state/environments/`、`state/active-environment.json`、`state/model-manifest.json`、GPU 的 `output/reports/<run_id>/`。模型包不携带 CPU 日志，如需追踪两个实例，请单独保存日志文件。
 
 `--dry-run` 保持无写入，CPU PREPARED、模型导入成功、离线测试通过都不计为 GPU 验收。本机尚未执行真实两个 Notebook 实例的安装或推理。
 

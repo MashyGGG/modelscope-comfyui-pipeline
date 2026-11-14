@@ -14,7 +14,7 @@ from .common import capture, paths
 
 
 def diagnose(c, require_cuda=False, network=False, probe_torch=True, check_space=True, require_gpu=True):
-    from .preflight import gpu_info, port_open, version
+    from .preflight import driver_status, gpu_info, port_open
     if require_cuda and not require_gpu:
         raise ValueError("CPU preparation cannot require CUDA validation")
     result = {"status": "RUNNING", "mode": "gpu" if require_gpu else "cpu-prepare",
@@ -58,8 +58,8 @@ def diagnose(c, require_cuda=False, network=False, probe_torch=True, check_space
         if "gpu" not in result:
             return "FAIL", "GPU detection failed; driver compatibility unknown", {}
         value = result["gpu"]["driver"]
-        return ("PASS" if version(value) >= version(c["min_driver"]) else "FAIL",
-                f"{value}; minimum {c['min_driver']} for the supported cu126 profile", {})
+        status, detail = driver_status(c, value)
+        return status, detail, {}
     check("NVIDIA driver", driver)
     def vram():
         if not require_gpu:
@@ -96,6 +96,9 @@ def diagnose(c, require_cuda=False, network=False, probe_torch=True, check_space
         return ("PASS" if os.access(ancestor, os.W_OK | os.X_OK) else "FAIL",
                 f"workspace={paths(c)['base']}; existing parent={ancestor}", {})
     check("Workspace permissions", writable)
+    check("Managed Python environment", lambda: (
+        "PASS", f"selected={paths(c)['venv']}; marker={paths(c)['install_marker']}; "
+        "legacy venv and model/cache paths are preserved", {"managed_python": str(paths(c)["python"])}))
     def port():
         if not require_gpu:
             return "SKIP", "CPU preparation does not start a ComfyUI service", {}
@@ -122,6 +125,10 @@ else:
   x=torch.ones((32,32),device='cuda'); assert (x@x)[0,0].item()==32; torch.cuda.synchronize()
  print(json.dumps({'available':ok,'torch':torch.__version__,'cuda':torch.version.cuda}))
 """.replace("REQUIRE_GPU", repr(require_gpu))
+            if require_cuda:
+                from .common import ROOT
+                code = ("import json,sys; sys.path.insert(0," + repr(str(ROOT)) + "); "
+                        "from pipeline.preflight import cuda; print(json.dumps(cuda()))")
             proc = subprocess.run([interpreter, "-c", code], capture_output=True, text=True, timeout=60,
                                   env={**os.environ, "CUDA_VISIBLE_DEVICES": str(c["gpu_index"])})
             if proc.returncode:

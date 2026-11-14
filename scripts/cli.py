@@ -169,7 +169,7 @@ def operate(args, c, items, p, operation):
         return
     with operation.phase("Host preflight"):
         host_settings = {**c, "min_disk_gib": c.get("min_runtime_disk_gib", 16)} if args.gpu_validate else c
-        host(host_settings, check_space=not (p["state"] / "installed.json").exists(), require_gpu=not args.cpu_prepare)
+        host(host_settings, check_space=not p["install_marker"].exists(), require_gpu=not args.cpu_prepare)
     if args.stage == "preflight":
         return
     if args.gpu_validate:
