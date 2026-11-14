@@ -1,0 +1,26 @@
+{
+  "tasks": [
+    {
+      "name": "lake",
+      "image": {
+        "prompt": "A small red sailboat on a calm alpine lake, distant snowy mountains, soft morning light, cinematic photography",
+        "seed": 101
+      },
+      "video": {
+        "prompt": "The red sailboat gently moves across the calm lake, soft ripples on the water, camera slowly pans right, cinematic natural motion",
+        "seed": 201
+      }
+    },
+    {
+      "name": "lighthouse",
+      "image": {
+        "prompt": "A white lighthouse above a rocky coast at sunset, warm light, cinematic photography",
+        "seed": 102
+      },
+      "video": {
+        "prompt": "Ocean waves roll gently against the rocks, camera slowly moves toward the white lighthouse, cinematic natural motion",
+        "seed": 202
+      }
+    }
+  ]
+}

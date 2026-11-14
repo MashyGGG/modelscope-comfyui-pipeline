@@ -2,7 +2,7 @@
 
 在魔搭 GPU Notebook 上，一条命令安装独立 ComfyUI 环境，使用 SDXL 生成 PNG，再将这张真实图片交给 Wan2.2 TI2V 5B，生成并完整解码验收 MP4/H.264。
 
-**当前状态：实现和离线测试已完成；魔搭 A10 GPU 集成验收尚未执行。** 模型约 25.08 GB，首次运行会下载权重和 PyTorch。只有真实两阶段推理及媒体验收均成功，才会显示 `E2E VALIDATION PASSED`。离线测试中的合成媒体仅为校验器测试输入。
+**当前状态：单任务已依据用户提供的 A10 24GB / 驱动 570.211.01 / 约 59 GiB 内存实例日志完成真实 PNG→MP4 验收；tasks 批量模式已完成离线测试，实机批量验收待执行。** 模型约 25.08 GB，首次运行会下载权重和 PyTorch。单任务通过标志为 `E2E VALIDATION PASSED`，整个批次通过标志为 `BATCH VALIDATION PASSED`。离线测试中的合成媒体仅为校验器测试输入。
 
 ## 选择验证方式
 
@@ -96,6 +96,7 @@ bash oneclick.sh --stage prepare
 bash oneclick.sh --stage e2e                   # 已启动服务时，创建一次新的真实推理
 bash oneclick.sh --stage e2e --resume RUN_ID    # 复用原 run 中已验收的图片，重做视频阶段
 bash oneclick.sh --stage report --resume RUN_ID
+bash oneclick.sh --gpu-validate --config config/batch.example.yaml # tasks 数组串行生成多组 PNG+MP4
 ```
 
 首次在实例验证请先在 [完整验证流程](docs/GPU_VALIDATION.md) 中选择拆分或合并方式。环境检测只需要标准库，不安装软件或下载权重；默认检查系统、Python、Git/Bash、venv、GPU/驱动、显存、主机内存、磁盘、目录权限、端口和已有 PyTorch CUDA 运算。CPU 检测用 `--cpu` 明确跳过 GPU/驱动/端口门槛，只检查包导入；不能与 `--require-cuda` 合用。首次没有 torch 或系统 torch 不匹配时提示 WARN，安装后使用 `--require-cuda` 则视为失败。`--network` 额外探测四类下载服务，连通性检查不能保证后续大文件下载一定成功。
@@ -121,6 +122,19 @@ bash oneclick.sh --set task_timeout=7200 --set port=8190
 ```
 
 ## 配置和存储
+
+保留 `config/defaults.yaml` 的顶层 `image`、`video` 单任务配置；没有 `tasks` 时每次生成一组 PNG+MP4。另提供 [批量示例](config/batch.example.yaml)：使用 `--config` 指定含非空 `tasks` 数组的文件，按顺序生成每一项。配置文件可只声明覆盖项，其余继承 defaults.yaml；每项通过唯一 `name` 和自己的 `image`、`video` 覆盖公共生成参数。任务字段优先于顶层生成默认值（含顶层 `--set image.*` / `video.*`），尺寸、步数、seed 等未指定时继承。`--set` 继续支持现有单任务操作；不支持用 `tasks.0.*` 索引修改数组，请直接编辑任务文件。
+
+已验证实例的批量操作：
+
+```bash
+# 首次复制示例，之后编辑自己的任务文件；该文件被 Git 忽略
+cp config/batch.example.yaml config/batch.local.yaml
+bash oneclick.sh --dry-run --config config/batch.local.yaml
+bash oneclick.sh --gpu-validate --config config/batch.local.yaml
+```
+
+批次失败时保留配置并执行 `bash oneclick.sh --gpu-validate --config config/batch.local.yaml --resume <batch-ID>`；校验并跳过已完成任务，失败任务可复用原 PNG，其余任务继续执行。每项都有独立 run_id、日志和报告，批次汇总保存在 `output/batches/<batch-ID>/`。详细配置、微调提示词及恢复流程见 [单任务与批量生成](docs/BATCH_GENERATION.md)。
 
 配置优先级：命令行 `--set` > 环境变量 > `--config` 文件。默认 YAML 使用 JSON 子集，便于没有第三方包时进行无副作用的 dry-run；运行环境安装 PyYAML 后也接受普通 YAML。普通 YAML 在全新系统 Python 下启动时需要先安装 PyYAML，或使用默认格式。
 
@@ -153,6 +167,9 @@ $WORKSPACE_ROOT/
     reports/<run_id>/           # 状态、工作流、history、报告
     reports/e2e_report.json     # 最新报告副本
     reports/e2e_report.md
+    batches/<batch-ID>/        # 批次状态、汇总报告、每项有效配置及恢复归档
+    batches/batch_report.json  # 最近批次的汇总副本；不等于最近单任务报告
+    batches/batch_report.md
 ```
 
 源码目录的 `logs/` 和 `output/` 预留给本地工具；Notebook 的实际产物统一写到上述持久化运行目录。固定报告副本会更新，各 run 的历史产物和报告保留。已损坏的目标模型不自动删除或替换，需要用户检查或选择新目录；下载中断的 SDK 缓存会保留。模型部署采用符号链接，不额外复制全部权重。

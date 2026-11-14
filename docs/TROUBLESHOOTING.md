@@ -70,6 +70,8 @@ bash oneclick.sh --cpu-prepare
 
 ## 推理与恢复
 
+- tasks 批量运行失败：使用原 `--config` 和日志中的 batch-ID 执行 `--resume`。失败时停止后续任务；恢复会重新校验并跳过已通过项，失败项复用已验证的 PNG，再继续 PENDING 项。不能只依据前面任务的 `E2E VALIDATION PASSED` 判断批次通过，整批要求 `BATCH VALIDATION PASSED`。配置、模型或成功产物改变时拒绝恢复；要微调 prompt 或增减任务，请创建新批次。详见 [批量生成流程](BATCH_GENERATION.md)。
+- `Batch resume requires the original --config containing tasks`：恢复批次时遗漏了任务配置文件；补上同一 `--config`，不要将 batch-ID 作为默认单任务的 run_id。`tasks` 空数组、重名或非法 name、未知任务参数会在运行前拒绝。
 - 文生图及 PNG 上传哈希均已通过，随后出现 `Unavailable option/model: LoadImage.image=pipeline/...`：这是旧版工作流校验误把根目录图片下拉列表当成所有合法输入，导致子目录图片被拒绝；视频任务尚未提交。新版只对 `LoadImage.image` 检查受管 input 目录内的真实文件，保留上传 SHA256、路径边界及其他选项校验，并输出 `[PASS] LoadImage input file: ...`。在同一 GPU 实例更新源码后，保持配置和运行目录，使用原 run_id 恢复：
 
 ```bash
@@ -87,7 +89,7 @@ bash oneclick.sh --gpu-validate --resume 20261114T134803Z-6f169d0d
 - 任务缓存命中：自动验收拒绝缓存证据。使用本项目受管的 `--cache-none` 服务。
 - MP4 任务完成但验收失败：查看对应 `video-history.json`、报告和服务日志，不手工将状态改为成功。完整解码可能发现帧数、编码或文件损坏问题。
 - 进程被 SIGKILL/实例断电：无法保证最后一次状态写入；保留旧任务证据。重启服务后按相同 run_id 恢复，已验证的图片可继续使用。
-- 不支持通过 UI 与自动验收同时抢占队列；批量任务、多 GPU、Web 后台属于后续阶段。
+- 不支持通过 UI 与自动验收同时抢占队列；tasks 已支持单 GPU 串行批量任务，多 GPU 和 Web 后台属于后续阶段。
 
 ## 日志和报告
 

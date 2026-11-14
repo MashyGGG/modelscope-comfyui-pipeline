@@ -10,7 +10,7 @@
 |---|---|
 | Python 语法、Shell `bash -n` | PASS |
 | YAML 配置、模型清单、四份 UI/API JSON、API 图连接 | PASS |
-| 离线 pytest | 80 passed |
+| 离线 pytest | 103 passed |
 | `bash oneclick.sh --dry-run` | PASS；未执行安装、下载或推理 |
 | ModelScope 固定内容 revision 与 SDK 分支的四个文件路径、大小与 SHA256 | PASS，通过只读仓库 API 实查；实际 SDK 接受 master 引用 |
 | 固定 ComfyUI commit 的 Wan/Video 节点、缓存开关、history 字段、定向中断接口 | PASS，通过官方源码实查 |
@@ -37,17 +37,18 @@ ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析
 |---|---|
 | Linux A10 Notebook 完整依赖安装与 CUDA 运算 | PASS（用户日志：Python 3.12.13、驱动 570.211.01、torch 2.8.0+cu126；FP16 矩阵乘法/卷积/注意力、BF16 矩阵乘法通过） |
 | 约 25.08 GB 权重真实下载与落盘 SHA256 | PASS（用户 CPU 实例日志，四个文件全部校验通过）；真实中断续传场景待验证 |
-| 原生 ComfyUI 启动和运行时 `/object_info` 校验 | 启动和初始节点/模型检查 PASS；上传后旧版 LoadImage 子目录校验误拒绝，已修复，实例重试待验证 |
+| 原生 ComfyUI 启动和运行时 `/object_info` 校验 | PASS（用户恢复日志已确认子目录输入校验通过，视频任务被接受并完成） |
 | SDXL 真实生成 1024×576 PNG | PASS（用户日志：任务约 16 秒，PNG 尺寸及上传 SHA256 均通过） |
-| Wan2.2 真实读取该 PNG 并生成 49 帧视频 | NOT RUN |
-| 真实 GPU 输出 MP4 的完整解码验收 | NOT RUN |
-| A10 显存、内存、耗时测量 | NOT RUN |
+| Wan2.2 真实读取该 PNG 并生成 49 帧视频 | PASS（用户日志：视频任务约 80.1 秒完成） |
+| 真实 GPU 输出 MP4 的完整解码验收 | PASS（用户日志出现 MP4 Validation 和 E2E VALIDATION PASSED，用户已人工播放视频） |
+| A10 显存、内存、耗时测量 | 日志确认 A10 24564 MiB、系统内存约 58.85 GiB、恢复总耗时 196.528 秒；精确内存/显存峰值未提供 |
+| tasks 数组真实 GPU 批量生成及恢复 | NOT RUN（新增离线回归已通过） |
 | 真实 CPU Notebook 环境安装和完整模型下载 | PASS（用户提供完整日志，约 352 秒完成 CPU PREPARATION） |
 | GPU A10 / 550.54.15 / Python 3.12 | 早期实例安装遇到网络故障，未完成 CUDA；后续成功证据来自驱动 570.211.01 的 A10，不代表 550.54.15 已实测通过 |
 | 两个 Notebook 实例间约 25 GB 模型包传输及 GPU 复用 | NOT RUN（离线跨目录 fixture 已通过） |
 | Python 3.10/3.12 和远程 GitHub Actions | NOT RUN（已提供 CI 配置） |
 
-当前没有已连接的魔搭 A10 Notebook；本地也没有可用的 nvidia-smi。因此本报告不能作为 GPU E2E 通过证明。
+当前没有已连接的魔搭 A10 Notebook，本地也没有可用的 nvidia-smi。表中真实单任务通过依据为用户提供的实例日志；本地测试不作为 GPU 推理证据，批量模式仍待实例验证。
 
 用户提供的 2026-11-14 CPU 实例日志显示：系统为 Linux x86_64、Python 3.11.11，CPU 准备预检通过；早期 ComfyUI fetch 在约 372 秒后出现 GnuTLS recv error、EOF 及 index-pack 错误，退出码 128。默认启用 Git HTTP/1.1 后，实例重试已确认源码拉取成功，见下段。
 
@@ -61,7 +62,11 @@ ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析
 
 后续用户提供的 12:36–13:48 UTC GPU 日志确认：A10 24564 MiB、驱动 570.211.01、Python 3.12.13；依赖安装约 3950 秒完成，CUDA 运算及四个模型复用校验通过。受管 ComfyUI 启动成功，run_id=`20261114T134803Z-6f169d0d` 的 SDXL 任务约 16 秒完成，PNG 和上传字节 SHA256 一致；随后本仓库把 LoadImage 根目录下拉选项当成完整文件列表，误拒绝 `pipeline/<run_id>/sdxl_00001_.png`，视频任务未提交。该次 E2E 状态为 FAILED，不能记录为视频验收通过。
 
-子目录图片修复新增 9 项离线回归，覆盖真实子目录 PNG、缺失文件/目录、路径越界、模型及采样器选项仍严格匹配；扩展调度恢复测试，验证上传哈希不符时不能提交视频，哈希一致的子目录图片通过真实文件校验后进入视频提交，恢复时不重复生成图片并归档原失败证据。调度测试在视频提交处主动抛出离线标记错误，不生成 GPU 成功证据。实现仅为 LoadImage.image 传入受管 input 根目录，保留 SHA256 校验，不改上游 ComfyUI；真实 Wan/MP4 验收等待实例重试。
+子目录图片修复新增 9 项离线回归，覆盖真实子目录 PNG、缺失文件/目录、路径越界、模型及采样器选项仍严格匹配；扩展调度恢复测试，验证上传哈希不符时不能提交视频，哈希一致的子目录图片通过真实文件校验后进入视频提交，恢复时不重复生成图片并归档原失败证据。调度测试在视频提交处主动抛出离线标记错误，不生成 GPU 成功证据。实现仅为 LoadImage.image 传入受管 input 根目录，保留 SHA256 校验，不改上游 ComfyUI；后续实例结果见下段。
+
+13:56–13:59 UTC 的用户恢复日志已确认：同一 run_id=`20261114T134803Z-6f169d0d` 复用原 PNG、环境、四个模型和受管服务，LoadImage 子目录路径校验通过；12 节点视频任务被接受，约 80.1 秒完成，MP4 完整解码及元数据验收通过。操作总耗时 196.528 秒，输出 E2E VALIDATION PASSED，用户已观看视频。实机视频路径为 `output/videos/20261114T134803Z-6f169d0d/wan_00001_.mp4`。该实例约 59 GiB 内存，不据此宣称 32 GiB 内存或旧驱动实例均已通过。
+
+tasks 双模式实现新增 23 项离线测试：部分配置继承且各项独立、非法数组/重名/路径/未知参数/错误帧数拒绝、旧单任务完整配置及指纹保持兼容、批量 dry-run 无写入、逐任务 UI/API 工作流不覆盖；按顺序生成独立产物和操作日志、失败停止并恢复剩余项、成功任务重新校验并跳过、子任务已通过而批次未更新时的中断恢复、拒绝配置/模型/成功产物变化及成功状态丢失，以及 CLI 分发和批次报告重建。状态机测试使用显式离线执行器与真实编码的微型合成 PNG/MP4，仅存临时目录，不作为真实 GPU 通过证明。
 
 ## 在魔搭执行真实验收
 
@@ -76,3 +81,5 @@ python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["status"]=
 ```
 
 只有全部通过后，终端才会显示 `E2E VALIDATION PASSED`。请保留该次 `output/reports/<run_id>/`、`logs/`、`state/environments/` 和 `state/active-environment.json`，以便补充实机兼容性和性能结果。测试失败时保留失败报告，不替换为预制产物。
+
+批量验证按 [tasks 操作流程](BATCH_GENERATION.md) 执行，最终需要 `BATCH VALIDATION PASSED` 和 `output/batches/<batch-ID>/batch_report.json` 中所有项为 PASSED；同时保留每项原始报告和操作日志。

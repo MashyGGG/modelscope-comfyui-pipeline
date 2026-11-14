@@ -11,7 +11,7 @@ import time
 import traceback
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pipeline.common import ROOT, atomic_json, config, load_data, lock, paths
+from pipeline.common import ROOT, atomic_json, config, load_data, lock, paths, task_configs
 from pipeline.models import specifications
 
 
@@ -30,7 +30,7 @@ def parser():
     mode.add_argument("--import-models", type=Path, metavar="BUNDLE.tar", help="Import weights into portable cache without requiring an installed environment")
     mode.add_argument("--stage", choices=["preflight", "install", "download", "prepare", "start", "e2e", "report"])
     p.add_argument("--skip-download", action="store_true")
-    p.add_argument("--resume", help="Resume a failed run using exactly the original config/model settings")
+    p.add_argument("--resume", help="Resume a failed run or batch using exactly the original config/model settings")
     p.add_argument("--cuda", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--runtime", action="store_true", help=argparse.SUPPRESS)
     return p
@@ -50,11 +50,15 @@ def runtime(args, c, items):
         models.verify_all(c, items)
         server.start(c)
         from pipeline.client import ComfyClient
-        for graph in workflows.build(c, items):
-            # LoadImage lists input files; placeholder is intentionally supplied at actual submission time.
+        for name, effective in task_configs(c) if "tasks" in c else [("single", c)]:
             info = ComfyClient(c).info()
-            info["LoadImage"]["input"]["required"]["image"][0].append("generated.png") if "LoadImage" in info else None
-            workflows.validate(graph, info)
+            # This placeholder validates preview graphs only, never an actual submission.
+            if "LoadImage" in info:
+                info["LoadImage"]["input"]["required"]["image"][0].append("generated.png")
+            for graph in workflows.build(effective, items):
+                workflows.validate(graph, info)
+            if "tasks" in c:
+                print(f"[PASS] Native nodes and model availability task={name}", flush=True)
         print("[PASS] Native nodes and model availability", flush=True)
     elif stage == "e2e":
         models.verify_all(c, items)
@@ -66,6 +70,12 @@ def runtime(args, c, items):
         from pipeline.common import checked_path
         from pipeline.report import report
         p = paths(c)
+        if "tasks" in c:
+            from pipeline.batch import batch_report, load_batch
+            state, directory = load_batch(c, items, args.resume, allow_passed=True)
+            batch_report(state, directory, p["output"])
+            print(f"[PASS] Batch report: {directory / 'batch_report.md'}", flush=True)
+            return
         run_dir = checked_path(p["output"] / "reports", args.resume)
         report(load_data(run_dir / "state.json"), run_dir, p["output"])
 
@@ -91,11 +101,20 @@ def main(argv=None):
         runtime(args, c, items)
         return
     if args.dry_run:
-        for graph in __import__("pipeline.workflows", fromlist=["build"]).build(c, items):
-            __import__("pipeline.workflows", fromlist=["validate"]).validate(graph)
+        from pipeline import workflows
+        plan = task_configs(c) if "tasks" in c else [("single", c)]
+        for name, effective in plan:
+            for graph in workflows.build(effective, items):
+                workflows.validate(graph)
         print("DRY RUN — no installation, download, directory creation, server or GPU inference")
         print(f"Workspace: {p['base']}\nComfyUI: {p['comfy']}\nCommit: {c['comfyui_ref']}\nModels: {sum(m['size'] for m in items)} bytes")
         print(f"Video: {c['video']['width']}x{c['video']['height']}, {c['video']['frames']} frames, {c['video']['fps']} FPS")
+        if "tasks" in c:
+            print(f"Batch: {len(plan)} tasks, sequential; stop on first failure")
+            for name, effective in plan:
+                i, v = effective["image"], effective["video"]
+                print(f"Task {name}: image={i['width']}x{i['height']} seed={i['seed']} prompt={i['prompt']}")
+                print(f"Task {name}: video={v['width']}x{v['height']} frames={v['frames']} seed={v['seed']} prompt={v['prompt']}")
         print("Plan: host preflight → install → CUDA gate → model download → workflows → start → SDXL → Wan → MP4 validation")
         print("GPU E2E: NOT RUN")
         return

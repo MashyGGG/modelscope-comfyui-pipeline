@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from copy import deepcopy
 import hashlib
 import json
 import os
@@ -94,7 +95,16 @@ def fingerprint(data):
 
 
 def config(path=None, overrides=(), use_env=True):
-    c = load_data(path or ROOT / "config/defaults.yaml")
+    c = load_data(ROOT / "config/defaults.yaml")
+    if path:
+        supplied = load_data(path)
+        if not isinstance(supplied, dict):
+            raise ValueError("Configuration must be an object; put batch jobs in a tasks array")
+        for key, value in supplied.items():
+            if key in ("image", "video") and isinstance(value, dict):
+                c[key].update(value)
+            else:
+                c[key] = value
     env = {"WORKSPACE_ROOT": "workspace_root", "COMFYUI_DIR": "comfyui_dir",
            "MODEL_CACHE_DIR": "model_cache_dir", "COMFYUI_REF": "comfyui_ref",
            "COMFYUI_PORT": "port"}
@@ -130,8 +140,25 @@ def config(path=None, overrides=(), use_env=True):
         value = c.get(key, 30 if key == "pip_timeout" else 3)
         if not isinstance(value, int) or not minimum <= value <= maximum:
             raise ValueError(f"{key} must be an integer in {minimum}..{maximum}")
+    validate_generation(c)
+    if "tasks" in c:
+        task_configs(c)  # Validate every effective task before installation/inference.
+    if not 1 <= c["port"] <= 65535:
+        raise ValueError("Invalid port")
+    for key in ("startup_timeout", "task_timeout", "poll_interval", "download_attempts"):
+        if c[key] <= 0:
+            raise ValueError(f"{key} must be positive")
+    return c
+
+
+def validate_generation(c):
     for section, multiple in (("image", 8), ("video", 32)):
         s = c[section]
+        if not isinstance(s, dict):
+            raise ValueError(f"{section} must be an object")
+        for key in ("prompt", "negative", "sampler", "scheduler"):
+            if not isinstance(s[key], str) or (key != "negative" and not s[key].strip()):
+                raise ValueError(f"Invalid {section}.{key}")
         for key in ("width", "height"):
             if not isinstance(s[key], int) or not 32 <= s[key] <= 8192 or s[key] % multiple:
                 raise ValueError(f"{section}.{key} must be a multiple of {multiple}, 32..8192")
@@ -143,12 +170,37 @@ def config(path=None, overrides=(), use_env=True):
             raise ValueError(f"Invalid {section}.cfg")
     if not isinstance(c["video"]["frames"], int) or c["video"]["frames"] < 5 or (c["video"]["frames"] - 1) % 4:
         raise ValueError("video.frames must be 4n+1 and >=5")
-    if not 1 <= c["video"]["fps"] <= 120 or not 1 <= c["port"] <= 65535:
-        raise ValueError("Invalid FPS or port")
-    for key in ("startup_timeout", "task_timeout", "poll_interval", "download_attempts"):
-        if c[key] <= 0:
-            raise ValueError(f"{key} must be positive")
-    return c
+    if not 1 <= c["video"]["fps"] <= 120:
+        raise ValueError("Invalid FPS")
+
+
+def task_configs(c):
+    """Resolve partial task settings without modifying the caller's configuration."""
+    tasks = c.get("tasks")
+    if not isinstance(tasks, list) or not tasks:
+        raise ValueError("tasks must be a non-empty array")
+    names, resolved = set(), []
+    for index, task in enumerate(tasks):
+        if not isinstance(task, dict) or task.keys() - {"name", "image", "video"}:
+            raise ValueError(f"Invalid tasks[{index}]: only name, image and video are supported")
+        name = task.get("name")
+        if not isinstance(name, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name):
+            raise ValueError(f"Invalid tasks[{index}].name: use 1-64 ASCII letters/digits, _ or -")
+        if name in names:
+            raise ValueError(f"Duplicate task name: {name}")
+        names.add(name)
+        effective = deepcopy({key: value for key, value in c.items() if key != "tasks"})
+        for section in ("image", "video"):
+            overrides = task.get(section, {})
+            if not isinstance(overrides, dict) or overrides.keys() - c[section].keys():
+                raise ValueError(f"Invalid task {name}.{section} settings")
+            effective[section].update(overrides)
+        try:
+            validate_generation(effective)
+        except (ValueError, TypeError, KeyError) as exc:
+            raise ValueError(f"Invalid task {name}: {exc}") from exc
+        resolved.append((name, effective))
+    return resolved
 
 
 def runtime_tag():

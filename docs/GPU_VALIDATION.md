@@ -95,6 +95,8 @@ bash oneclick.sh
 
 ## 两种方式共同的结果检查
 
+默认 `config/defaults.yaml` 保持单任务。一份配置需要生成多组图片和视频时，复制 `config/batch.example.yaml` 到 `config/batch.local.yaml`，修改 tasks 后执行 `bash oneclick.sh --gpu-validate --config config/batch.local.yaml`；首次完整安装也支持 `bash oneclick.sh --config config/batch.local.yaml`。批次需要最终 `BATCH VALIDATION PASSED`，不能只看某一项的 E2E 标志。逐任务日志、汇总和恢复方式见 [单任务与批量生成](BATCH_GENERATION.md)。
+
 ```bash
 cat "$WORKSPACE_ROOT/output/reports/e2e_report.md"
 ```
@@ -131,6 +133,6 @@ bash oneclick.sh --stop
 
 同时保存 `state/cpu-preparation.json`、`state/environments/`、`state/active-environment.json`、`state/model-manifest.json`、GPU 的 `output/reports/<run_id>/`。模型包不携带 CPU 日志，如需追踪两个实例，请单独保存日志文件。
 
-`--dry-run` 保持无写入，CPU PREPARED、模型导入成功、离线测试通过都不计为 GPU 验收。本机尚未执行真实两个 Notebook 实例的安装或推理。
+`--dry-run` 保持无写入，CPU PREPARED、模型导入成功、离线测试通过都不计为 GPU 验收。用户提供的 A10 实例日志已确认单任务真实 PNG→MP4 验收通过；新增 tasks 批量模式仍待实例测试，详情见 [测试报告](TEST_REPORT.md)。
 
 拆分方式的 CPU 准备必须使用 `--cpu-prepare`；合并方式的完整命令必须在 GPU 实例执行。

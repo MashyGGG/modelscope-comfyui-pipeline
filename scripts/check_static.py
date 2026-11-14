@@ -8,9 +8,9 @@ import subprocess
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pipeline.common import ROOT, config, load_data
+from pipeline.common import ROOT, config, load_data, task_configs
 from pipeline.models import specifications
-from pipeline.workflows import validate
+from pipeline.workflows import build, validate
 
 
 def main():
@@ -18,6 +18,9 @@ def main():
     for path in sources:
         ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     config()
+    for _, effective in task_configs(config(ROOT / "config/batch.example.yaml")):
+        for graph in build(effective, specifications()):
+            validate(graph)
     specifications()
     for path in (ROOT / "workflows").rglob("*.json"):
         data = load_data(path)

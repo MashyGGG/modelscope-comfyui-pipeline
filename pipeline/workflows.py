@@ -2,7 +2,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 
-from .common import ROOT, atomic_json, checked_path, paths
+from .common import ROOT, atomic_json, checked_path, paths, task_configs
 
 
 def node(kind, **inputs):
@@ -139,10 +139,16 @@ def to_ui(graph):
             "links": links, "groups": [], "config": {}, "extra": {}, "version": 0.4}
 
 
-def prepare(c, items, destination=None):
+def prepare(c, items, destination=None, *, api_destination=None):
     destination = Path(destination or paths(c)["comfy"] / "user/default/workflows/modelscope-pipeline")
+    api_destination = Path(api_destination or paths(c)["base"] / "workflows/api")
+    if "tasks" in c:
+        for name, effective in task_configs(c):
+            prepare(effective, items, destination / name, api_destination=api_destination / name)
+            print(f"[PASS] Workflow Deployment task={name}", flush=True)
+        return
     a, b = build(c, items)
     for name, graph in (("01_sdxl_txt2img", a), ("02_wan22_i2v", b)):
         atomic_json(destination / f"{name}.json", to_ui(graph))
-        atomic_json(paths(c)["base"] / "workflows/api" / f"{name}_api.json", graph)
+        atomic_json(api_destination / f"{name}_api.json", graph)
     print("[PASS] Workflow Deployment", flush=True)

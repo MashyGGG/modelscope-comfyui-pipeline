@@ -55,8 +55,17 @@ def resume_state(c, items, run_id, run_dir):
 
 
 def execute(c, items, resume=None):
+    if "tasks" in c:
+        from .batch import execute_batch
+        return execute_batch(c, items, resume)
+    if resume and resume.startswith("batch-"):
+        raise ValueError("Batch resume requires the original --config containing tasks")
+    return execute_single(c, items, resume)
+
+
+def execute_single(c, items, resume=None, *, run_id=None):
     p = paths(c)
-    run_id = resume or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
+    run_id = resume or run_id or datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ-") + uuid.uuid4().hex[:8]
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("Invalid run ID")
     run_dir = p["output"] / "reports" / run_id

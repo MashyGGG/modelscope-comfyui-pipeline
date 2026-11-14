@@ -29,8 +29,9 @@ def sanitized(value):
 
 
 class Transcript:
-    def __init__(self, target):
+    def __init__(self, target, console_timestamps=True):
         self.target = target
+        self.console_timestamps = console_timestamps
         self.mutex = threading.RLock()
 
     def line(self, stream, value):
@@ -39,7 +40,7 @@ class Transcript:
             value = value.replace(token, "[REDACTED]")
         line = f"{utc()} {value}\n"
         with self.mutex:
-            stream.write(line)
+            stream.write(line if self.console_timestamps else value + "\n")
             stream.flush()
             self.target.write(line)
             self.target.flush()
@@ -72,7 +73,7 @@ class Tee:
 
 
 class Operation:
-    def __init__(self, directory, name, arguments=(), state_dir=None):
+    def __init__(self, directory, name, arguments=(), state_dir=None, *, console_timestamps=True):
         self.directory = Path(directory)
         self.name = name
         self.state_dir = Path(state_dir) if state_dir else None
@@ -82,6 +83,7 @@ class Operation:
         self.data = {"operation_id": self.id, "name": name, "status": "RUNNING", "started_at": utc(),
                      "log": str(self.log), "phases": []}
         self.arguments = list(arguments)
+        self.console_timestamps = console_timestamps
 
     def save(self):
         atomic_json(self.summary, sanitized(self.data))
@@ -111,7 +113,7 @@ class Operation:
         self.directory.mkdir(parents=True, exist_ok=True)
         self.stream = self.log.open("w", encoding="utf-8", buffering=1)
         self.old_out, self.old_err = sys.stdout, sys.stderr
-        sink = Transcript(self.stream)
+        sink = Transcript(self.stream, self.console_timestamps)
         sys.stdout, sys.stderr = Tee(self.old_out, sink), Tee(self.old_err, sink)
         self.previous_log = os.environ.get("PIPELINE_LOG_PATH")
         os.environ["PIPELINE_LOG_PATH"] = str(self.log)

@@ -8,3 +8,4 @@ state/
 runtime/
 *.egg-info/
 .coverage
+config/*.local.yaml
