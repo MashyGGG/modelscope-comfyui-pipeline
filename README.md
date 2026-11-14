@@ -75,6 +75,49 @@ bash oneclick.sh --cpu-prepare
 
 保留上次失败的受管安装目录即可重试。HTTP/1.1 配置用于改善 Git 传输兼容性，实际网络仍可能中断；它不影响 Python 对 `raw.githubusercontent.com` 的独立网络探测。
 
+## 单任务和多任务验证流程
+
+以下命令用于模型已准备好的 GPU 实例；首次安装或双实例准备见 [完整验证流程](docs/GPU_VALIDATION.md)。先进入项目目录更新：
+
+```bash
+cd /mnt/workspace/modelscope-comfyui-pipeline
+git -c http.version=HTTP/1.1 pull --ff-only
+```
+
+**单任务：生成一张图片及对应视频。** 先检查细化配置，再执行真实生成：
+
+```bash
+bash oneclick.sh --dry-run --config config/single.refined.yaml
+bash oneclick.sh --gpu-validate --config config/single.refined.yaml
+```
+
+原版对照时将配置换成 `config/single.original.yaml`；不传 `--config` 时仍使用 `config/defaults.yaml`。通过标志为 `E2E VALIDATION PASSED`。
+
+**多任务：按 tasks 数组依次生成。** 首次复制一次示例，编辑本地文件中各项 name、image/video prompt 和 seed 后执行：
+
+```bash
+# 仅首次复制；后续保留并编辑已有任务文件
+cp config/batch.example.yaml config/batch.local.yaml
+# 编辑完成后再执行下面两条命令
+bash oneclick.sh --dry-run --config config/batch.local.yaml
+bash oneclick.sh --gpu-validate --config config/batch.local.yaml
+```
+
+整批通过标志为 `BATCH VALIDATION PASSED`；单项通过不代表整批通过。任务串行执行，失败即停止。批次汇总为 `$WORKSPACE_ROOT/output/batches/batch_report.md`，单任务最新报告为 `$WORKSPACE_ROOT/output/reports/e2e_report.md`；未设置 WORKSPACE_ROOT 时，默认根目录为 `/mnt/workspace/modelscope-comfyui-pipeline-runtime`。
+
+`--dry-run` 只检查配置和工作流，不执行 GPU 推理。真实操作保存日志和独立产物，完成后还需人工查看图片并播放视频，确认视觉细节与 prompt 相符。
+
+失败后保持原配置、模型和运行目录，恢复命令如下；将 RUN_ID 或 BATCH_ID 替换为失败日志中的实际 ID：
+
+```bash
+# 单任务：图片已通过时核对并复用原图，继续视频阶段
+bash oneclick.sh --gpu-validate --config config/single.refined.yaml --resume RUN_ID
+# 多任务：校验并跳过成功项，恢复失败项并继续剩余任务
+bash oneclick.sh --gpu-validate --config config/batch.local.yaml --resume BATCH_ID
+```
+
+修改 prompt、seed 或任务列表后去掉 `--resume`，创建新运行。详细说明见 [单任务 prompt 微调](docs/PROMPT_TUNING.md) 和 [tasks 批量生成](docs/BATCH_GENERATION.md)。
+
 ## 常用命令
 
 ```bash
@@ -125,16 +168,7 @@ bash oneclick.sh --set task_timeout=7200 --set port=8190
 
 保留 `config/defaults.yaml` 的顶层 `image`、`video` 单任务配置；没有 `tasks` 时每次生成一组 PNG+MP4。另提供 [批量示例](config/batch.example.yaml)：使用 `--config` 指定含非空 `tasks` 数组的文件，按顺序生成每一项。配置文件可只声明覆盖项，其余继承 defaults.yaml；每项通过唯一 `name` 和自己的 `image`、`video` 覆盖公共生成参数。任务字段优先于顶层生成默认值（含顶层 `--set image.*` / `video.*`），尺寸、步数、seed 等未指定时继承。`--set` 继续支持现有单任务操作；不支持用 `tasks.0.*` 索引修改数组，请直接编辑任务文件。
 
-已验证实例的批量操作：
-
-```bash
-# 首次复制示例，之后编辑自己的任务文件；该文件被 Git 忽略
-cp config/batch.example.yaml config/batch.local.yaml
-bash oneclick.sh --dry-run --config config/batch.local.yaml
-bash oneclick.sh --gpu-validate --config config/batch.local.yaml
-```
-
-批次失败时保留配置并执行 `bash oneclick.sh --gpu-validate --config config/batch.local.yaml --resume <batch-ID>`；校验并跳过已完成任务，失败任务可复用原 PNG，其余任务继续执行。每项都有独立 run_id、日志和报告，批次汇总保存在 `output/batches/<batch-ID>/`。详细配置、微调提示词及恢复流程见 [单任务与批量生成](docs/BATCH_GENERATION.md)。
+生成和恢复命令见上方 [单任务和多任务验证流程](#单任务和多任务验证流程)。`config/*.local.yaml` 被 Git 忽略，供保存自己的任务配置。每项都有独立 run_id、日志和报告，批次汇总保存在 `output/batches/<batch-ID>/`。详细配置、微调提示词及恢复流程见 [单任务与批量生成](docs/BATCH_GENERATION.md)。
 
 配置优先级：命令行 `--set` > 环境变量 > `--config` 文件。默认 YAML 使用 JSON 子集，便于没有第三方包时进行无副作用的 dry-run；运行环境安装 PyYAML 后也接受普通 YAML。普通 YAML 在全新系统 Python 下启动时需要先安装 PyYAML，或使用默认格式。
 
