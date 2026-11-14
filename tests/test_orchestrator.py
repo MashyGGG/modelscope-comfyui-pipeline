@@ -113,7 +113,8 @@ def test_stop_refuses_recycled_pid(tmp_path, monkeypatch):
         server.stop(c)
 
 
-def test_upload_mismatch_fails_and_can_resume_only_image(tmp_path, monkeypatch):
+@pytest.mark.parametrize("valid_upload", [False, True])
+def test_upload_validation_and_image_resume(tmp_path, monkeypatch, valid_upload):
     """Exercise failure persistence and stage reuse with explicit offline doubles."""
     c = config(overrides=[f"workspace_root={tmp_path.as_posix()}", "image.width=64", "image.height=32"])
     items = models.specifications()
@@ -121,21 +122,35 @@ def test_upload_mismatch_fails_and_can_resume_only_image(tmp_path, monkeypatch):
     monkeypatch.setattr(orchestrator.preflight, "cuda", lambda: {"torch": "OFFLINE DOUBLE"})
     monkeypatch.setattr(orchestrator.server, "owned", lambda _: {"pid": 123})
     monkeypatch.setattr(orchestrator.server, "healthy", lambda _: True)
-    monkeypatch.setattr(orchestrator.workflows, "validate", lambda *a: None)
+    real_validate = orchestrator.workflows.validate
+    def validate_image_input(graph, info=None, **kwargs):
+        # Keep real file validation at the orchestration boundary; other nodes
+        # are outside this offline test's scope. Never simulate GPU success.
+        if info is None:
+            real_validate(graph)
+        elif graph["7"]["class_type"] == "LoadImage":
+            real_validate({"7": graph["7"]}, info, **kwargs)
+    monkeypatch.setattr(orchestrator.workflows, "validate", validate_image_input)
     class NoMonitor:
         peak, samples = None, 0
         def __init__(self, *a): pass
         def __enter__(self): return self
         def __exit__(self, *a): pass
     monkeypatch.setattr(orchestrator, "MemoryMonitor", NoMonitor)
-    counts = {"submits": 0}
+    counts = {"image": 0, "video": 0}
     class FakeClient:
         def __init__(self, c): self.graph = None
         def require_idle(self): pass
-        def info(self): return {}
+        def info(self):
+            return {"LoadImage": {"input": {"required": {
+                "image": [[], {"image_upload": True}],
+            }}, "output": ["IMAGE", "MASK"]}}
         def free(self): pass
         def submit(self, graph):
-            counts["submits"] += 1
+            if graph["7"]["class_type"] == "LoadImage":
+                counts["video"] += 1
+                raise RuntimeError("OFFLINE video submission reached")
+            counts["image"] += 1
             self.graph = graph
             return "offline-prompt"
         def wait(self, prompt):
@@ -148,17 +163,18 @@ def test_upload_mismatch_fails_and_can_resume_only_image(tmp_path, monkeypatch):
         def upload(self, image, subfolder):
             target = tmp_path / "ComfyUI/input" / subfolder / "wrong.png"
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(b"different")
+            target.write_bytes(image.read_bytes() if valid_upload else b"different")
             return {"type": "input", "subfolder": subfolder, "name": "wrong.png"}
     monkeypatch.setattr(orchestrator, "ComfyClient", FakeClient)
-    with pytest.raises(RuntimeError, match="Uploaded PNG SHA256"):
+    expected_error = "OFFLINE video submission reached" if valid_upload else "Uploaded PNG SHA256"
+    with pytest.raises(RuntimeError, match=expected_error):
         orchestrator.execute(c, items)
     state = load_data(tmp_path / "output/reports/e2e_report.json")
     assert state["status"] == "FAILED" and state["image"]["status"] == "PASSED"
     assert "video" not in state
-    with pytest.raises(RuntimeError, match="Uploaded PNG SHA256"):
+    with pytest.raises(RuntimeError, match=expected_error):
         orchestrator.execute(c, items, state["run_id"])
-    assert counts["submits"] == 1  # failed video input step does not regenerate SDXL
+    assert counts == {"image": 1, "video": 2 if valid_upload else 0}
     assert list((tmp_path / "output/reports" / state["run_id"]).glob("attempt-*/e2e_report.json"))
     assert list((tmp_path / "output/reports" / state["run_id"]).glob("attempt-*/image-history.json"))
     altered = config(overrides=[f"workspace_root={tmp_path.as_posix()}", "image.width=64", "image.height=32", "video.seed=42"])

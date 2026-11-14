@@ -10,7 +10,7 @@
 |---|---|
 | Python 语法、Shell `bash -n` | PASS |
 | YAML 配置、模型清单、四份 UI/API JSON、API 图连接 | PASS |
-| 离线 pytest | 71 passed |
+| 离线 pytest | 80 passed |
 | `bash oneclick.sh --dry-run` | PASS；未执行安装、下载或推理 |
 | ModelScope 固定内容 revision 与 SDK 分支的四个文件路径、大小与 SHA256 | PASS，通过只读仓库 API 实查；实际 SDK 接受 master 引用 |
 | 固定 ComfyUI commit 的 Wan/Video 节点、缓存开关、history 字段、定向中断接口 | PASS，通过官方源码实查 |
@@ -35,15 +35,15 @@ ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析
 
 | 验收项 | 状态 |
 |---|---|
-| Linux A10 Notebook 完整依赖安装与 CUDA 运算 | NOT RUN |
+| Linux A10 Notebook 完整依赖安装与 CUDA 运算 | PASS（用户日志：Python 3.12.13、驱动 570.211.01、torch 2.8.0+cu126；FP16 矩阵乘法/卷积/注意力、BF16 矩阵乘法通过） |
 | 约 25.08 GB 权重真实下载与落盘 SHA256 | PASS（用户 CPU 实例日志，四个文件全部校验通过）；真实中断续传场景待验证 |
-| 原生 ComfyUI 启动和运行时 `/object_info` 校验 | NOT RUN |
-| SDXL 真实生成 1024×576 PNG | NOT RUN |
+| 原生 ComfyUI 启动和运行时 `/object_info` 校验 | 启动和初始节点/模型检查 PASS；上传后旧版 LoadImage 子目录校验误拒绝，已修复，实例重试待验证 |
+| SDXL 真实生成 1024×576 PNG | PASS（用户日志：任务约 16 秒，PNG 尺寸及上传 SHA256 均通过） |
 | Wan2.2 真实读取该 PNG 并生成 49 帧视频 | NOT RUN |
 | 真实 GPU 输出 MP4 的完整解码验收 | NOT RUN |
 | A10 显存、内存、耗时测量 | NOT RUN |
 | 真实 CPU Notebook 环境安装和完整模型下载 | PASS（用户提供完整日志，约 352 秒完成 CPU PREPARATION） |
-| GPU A10 / 550.54.15 / Python 3.12 | 用户截图已进入 Python 3.12 依赖安装；普通依赖走 PyTorch 源低速超时，随后网络不可达；CUDA 和 E2E 尚未执行 |
+| GPU A10 / 550.54.15 / Python 3.12 | 早期实例安装遇到网络故障，未完成 CUDA；后续成功证据来自驱动 570.211.01 的 A10，不代表 550.54.15 已实测通过 |
 | 两个 Notebook 实例间约 25 GB 模型包传输及 GPU 复用 | NOT RUN（离线跨目录 fixture 已通过） |
 | Python 3.10/3.12 和远程 GitHub Actions | NOT RUN（已提供 CI 配置） |
 
@@ -58,6 +58,10 @@ ModelScope 版本解析修复新增 5 项测试：使用真实 SDK 1.29.2 解析
 本次新增 11 项离线回归：驱动兼容下限/推荐门槛分级；Python 3.11/3.12 选择独立环境和服务身份；无 CUDA 不可通过；新建版本环境时旧环境、旧标记、源码及模型保留；当前环境重复安装复用；模拟 CUDA 失败不能产生成功标记；解释器身份不符拒绝复用；其他 Python 版本的受管服务可明确停止但不可自动复用。环境安装和 CUDA 部分使用离线 doubles，源码复用检查使用真实临时 Git 仓库。真实 GPU 探针新增 FP16 矩阵乘法/卷积/注意力及可用时 BF16 检查；这些 GPU 运算在本地无 GPU 环境尚未执行。
 
 本次依赖下载源修复再新增 6 项离线回归，覆盖：三个官方 cu126 wheel 使用 --no-deps 和版本约束；普通依赖使用独立 PyPI 镜像并完整解析依赖；依赖失败停止且不继续成功检查；索引、超时和重试次数可配置；非法参数拒绝。只读检查已确认阿里云索引中存在 Python 3.12 的 NumPy 1.26.4、Pillow 11.3.0 及所需 nvidia-cusparselt-cu12 0.7.1 条目，未下载大 wheel，也未把索引可访问当成实例安装通过。
+
+后续用户提供的 12:36–13:48 UTC GPU 日志确认：A10 24564 MiB、驱动 570.211.01、Python 3.12.13；依赖安装约 3950 秒完成，CUDA 运算及四个模型复用校验通过。受管 ComfyUI 启动成功，run_id=`20261114T134803Z-6f169d0d` 的 SDXL 任务约 16 秒完成，PNG 和上传字节 SHA256 一致；随后本仓库把 LoadImage 根目录下拉选项当成完整文件列表，误拒绝 `pipeline/<run_id>/sdxl_00001_.png`，视频任务未提交。该次 E2E 状态为 FAILED，不能记录为视频验收通过。
+
+子目录图片修复新增 9 项离线回归，覆盖真实子目录 PNG、缺失文件/目录、路径越界、模型及采样器选项仍严格匹配；扩展调度恢复测试，验证上传哈希不符时不能提交视频，哈希一致的子目录图片通过真实文件校验后进入视频提交，恢复时不重复生成图片并归档原失败证据。调度测试在视频提交处主动抛出离线标记错误，不生成 GPU 成功证据。实现仅为 LoadImage.image 传入受管 input 根目录，保留 SHA256 校验，不改上游 ComfyUI；真实 Wan/MP4 验收等待实例重试。
 
 ## 在魔搭执行真实验收
 

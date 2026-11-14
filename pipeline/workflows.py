@@ -2,7 +2,7 @@ from copy import deepcopy
 import json
 from pathlib import Path
 
-from .common import ROOT, atomic_json, paths
+from .common import ROOT, atomic_json, checked_path, paths
 
 
 def node(kind, **inputs):
@@ -55,7 +55,7 @@ OUTPUTS = {
 }
 
 
-def validate(graph, info=None):
+def validate(graph, info=None, *, input_dir=None):
     visited, visiting = set(), set()
     def visit(key):
         if key in visiting:
@@ -92,7 +92,16 @@ def validate(graph, info=None):
                 visit(str(value[0]))
             elif info:
                 spec = allowed[name]
-                if isinstance(spec[0], list) and value not in spec[0]:
+                if kind == "LoadImage" and name == "image" and input_dir is not None:
+                    # LoadImage's UI list is not recursive. Its VALIDATE_INPUTS
+                    # accepts existing subdirectory files; verify the actual file.
+                    if not isinstance(value, str) or not value or Path(value).is_absolute():
+                        raise ValueError(f"LoadImage requires a relative input path: {value}")
+                    image_path = checked_path(input_dir, value)
+                    if not image_path.is_file():
+                        raise ValueError(f"LoadImage input file missing: {value}")
+                    print(f"[PASS] LoadImage input file: {image_path}", flush=True)
+                elif isinstance(spec[0], list) and value not in spec[0]:
                     raise ValueError(f"Unavailable option/model: {kind}.{name}={value}")
         visiting.remove(key)
         visited.add(key)

@@ -3,9 +3,10 @@ $ D:\code\modelscope-comfyui-pipeline\.venv-dev\Scripts\python.exe scripts/check
 GPU integration: NOT RUN (this command only performs static checks)
 
 $ D:\code\modelscope-comfyui-pipeline\.venv-dev\Scripts\python.exe -m pytest -q --junitxml=docs/offline-tests.xml
-.......................................................................  [100%]
+........................................................................ [ 90%]
+........                                                                 [100%]
 - generated xml file: D:\code\modelscope-comfyui-pipeline\docs\offline-tests.xml -
-71 passed in 5.21s
+80 passed in 9.49s
 
 $ C:/Program Files/Git/bin/bash.exe oneclick.sh --dry-run
 DRY RUN — no installation, download, directory creation, server or GPU inference

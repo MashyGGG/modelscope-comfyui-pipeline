@@ -133,7 +133,7 @@ def execute(c, items, resume=None):
             state["input_image"] = {"path": str(uploaded_path), "sha256": sha256(uploaded_path)}
             print(f"[PASS] Uploaded PNG integrity: {uploaded_path}; sha256={state['input_image']['sha256']}", flush=True)
             _, b = workflows.build(c, items, run_id, uploaded_relative)
-            workflows.validate(b, client.info())
+            workflows.validate(b, client.info(), input_dir=p["comfy"] / "input")
             atomic_json(run_dir / "video-prompt.json", b)
             client.require_idle()
             started = time.monotonic()

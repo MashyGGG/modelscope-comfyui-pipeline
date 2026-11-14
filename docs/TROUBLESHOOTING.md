@@ -70,6 +70,16 @@ bash oneclick.sh --cpu-prepare
 
 ## 推理与恢复
 
+- 文生图及 PNG 上传哈希均已通过，随后出现 `Unavailable option/model: LoadImage.image=pipeline/...`：这是旧版工作流校验误把根目录图片下拉列表当成所有合法输入，导致子目录图片被拒绝；视频任务尚未提交。新版只对 `LoadImage.image` 检查受管 input 目录内的真实文件，保留上传 SHA256、路径边界及其他选项校验，并输出 `[PASS] LoadImage input file: ...`。在同一 GPU 实例更新源码后，保持配置和运行目录，使用原 run_id 恢复：
+
+```bash
+cd /mnt/workspace/modelscope-comfyui-pipeline
+git -c http.version=HTTP/1.1 pull --ff-only &&
+bash oneclick.sh --gpu-validate --resume 20261114T134803Z-6f169d0d
+```
+
+上面 run_id 对应本次已知失败日志；其他运行替换为日志中的实际 ID。恢复会复用已验证的环境和模型，核对原 PNG 后重新上传并继续视频阶段；无需重装或重新下载完整权重。已启动且健康的受管 ComfyUI 可复用，无需因这次校验修复重启。预期日志先出现 `Text-to-Image (validated from original run)` 和 `LoadImage input file`，再提交 12 节点视频任务。只有完整 MP4 验收通过才会输出 `E2E VALIDATION PASSED`。
+
 - OOM：关闭占用 GPU 的其他任务，新运行时降低参数，例如 `--set video.width=640 --set video.height=352 --set video.frames=25 --set vae_tiled=true`。
 - 帧数必须为 4n+1，视频宽高是 32 的倍数；修改配置后不能恢复旧 run，应新建运行。
 - SDXL 成功、视频失败：使用终端给出的 run_id 执行 `--resume RUN_ID`，保持原配置。程序检查原 PNG 哈希并重新上传，只重复未完成的视频阶段。

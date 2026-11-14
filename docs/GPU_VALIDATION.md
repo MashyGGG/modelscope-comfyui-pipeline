@@ -117,6 +117,8 @@ bash oneclick.sh --resume <失败时打印的run_id>
 
 恢复操作生成新日志并归档旧任务证据，不重新生成已验证的 PNG。
 
+若旧版在上传 PNG 并通过哈希校验后报 `Unavailable option/model: LoadImage.image=pipeline/...`，先执行 `git -c http.version=HTTP/1.1 pull --ff-only` 获取子目录图片校验修复，再按上述命令恢复原 run_id。无需重装环境或重下模型；日志应显示 `Text-to-Image (validated from original run)`、`[PASS] LoadImage input file: ...`，随后提交视频任务。保持原配置，详细原因及本次实例的恢复命令见 [故障排查](TROUBLESHOOTING.md#推理与恢复)。
+
 ## 日志与停止
 
 ```bash
